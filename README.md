@@ -6,6 +6,15 @@ nunca saem da máquina do participante sem ele clicar em descarregar.
 
 ---
 
+## Qual versão estou a correr?
+
+O número aparece em baixo no ecrã de instruções, no resumo final, e no campo
+`schema` de cada ficheiro de sessão. **Versão atual: `aim-logger-1.2`.**
+
+Se publicar uma versão nova e o browser continuar a mostrar a antiga, é cache:
+`Ctrl+Shift+R` força o recarregamento. Vale a pena confirmar o número antes de
+reportar qualquer comportamento estranho — poupa tempo aos dois.
+
 ## ⚠ Antes de distribuir
 
 A página tem campos marcados `[A PREENCHER]`. Enquanto existir algum, aparece um

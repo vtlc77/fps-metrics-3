@@ -173,6 +173,45 @@ function ok(c,m){ console.log((c?"  [PASSA] ":"  [FALHA] ")+m); if(!c) process.e
      `dura o tempo configurado e não acaba antes (${dur.decorrido}s para 1.2s)`);
   ok(dur.fechouUmaVez, "fimDoNivel só corre uma vez, sem duplicar o resumo");
 
+  console.log("\n9. Transições a prova de cliques repetidos");
+  const tr = await pg.evaluate(async () => {
+    // reconstrói o percurso real: nível 1 -> clique -> nível 2 -> clique -> nível 3
+    jaTerminou = false; S.niveis = []; S.acertos = 0; S.disparos = 0;
+    S.nivel = 0; S.aFechar = false; S.pausado = false; S.entreRondas = false;
+    S.correndo = true;
+    CFG.segundosNivel2 = 0.4; CFG.segundosNivel3 = 0.4;
+    proximoNivel();                                  // nível 1
+    const aponta = () => { const a = S.alvos[0]; if (!a) return;
+      const v={x:a.x-S.cam.x,y:a.y-S.cam.y,z:a.z-S.cam.z}, n=Math.hypot(v.x,v.y,v.z);
+      S.cam.pitch=Math.asin(v.y/n); S.cam.yaw=Math.atan2(v.x,-v.z);
+      dispara(performance.now()); };
+    for (let i=0;i<40 && S.nivel===1;i++){ aponta(); await new Promise(r=>setTimeout(r,2)); }
+    const depoisN1 = { nivel:S.nivel, entre:S.entreRondas };
+
+    // TRÊS cliques seguidos, como um utilizador impaciente
+    for (let i=0;i<3;i++){ cv.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+      await new Promise(r=>setTimeout(r,25)); }
+    await new Promise(r=>setTimeout(r,120));
+    const depoisCliques = { nivel:S.nivel, fase:S.fase, entre:S.entreRondas,
+                            niveisFechados:S.niveis.length };
+
+    // dispara uma vez no nível em que está
+    const acertosAntes = S.acertos; aponta();
+    await new Promise(r=>setTimeout(r,80));
+    return { depoisN1, depoisCliques,
+             nivelDepoisDoTiro: S.nivel, faseDepoisDoTiro: S.fase,
+             acertouSemTerminar: S.fase !== "fim" };
+  });
+  console.log("   " + JSON.stringify(tr));
+  ok(tr.depoisN1.nivel === 1 && tr.depoisN1.entre === true,
+     "o nível 1 fecha e fica à espera de clique");
+  ok(tr.depoisCliques.nivel === 2,
+     `três cliques seguidos avançam UM nível só (ficou no ${tr.depoisCliques.nivel})`);
+  ok(tr.depoisCliques.niveisFechados === 1,
+     "não duplica o resumo do nível");
+  ok(tr.acertouSemTerminar,
+     "disparar logo a seguir à transição não termina a sessão");
+
   ok(errs.length===0, errs.length?("erros: "+errs.join(" | ")):"sem erros de JavaScript");
   await b.close();
   console.log(process.exitCode?"\n*** HÁ FALHAS ***\n":"\nNÍVEIS VALIDADOS\n");

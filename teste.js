@@ -105,7 +105,7 @@ function ok(cond, msg) {
     };
   });
   console.log("   ficheiro:", JSON.stringify(f, null, 1).replace(/\n\s*/g, " "));
-  ok(f.schema === "aim-logger-1.0", "tem versão de schema");
+  ok(/^aim-logger-\d+\.\d+$/.test(f.schema), `tem versão de schema (${f.schema})`);
   ok(f.temId, "tem identificador anónimo de 16 hex");
   ok(f.temConsent, "regista o momento do consentimento");
   ok(f.formCompleto, "guarda o formulário completo");

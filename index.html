@@ -299,6 +299,7 @@
       <button id="b-instr">Começar</button>
       <span class="nota">Ao clicar, o cursor fica preso à janela. <kbd>Esc</kbd> liberta-o.</span>
     </div>
+    <p class="nota" style="margin-top:18px;opacity:.6">versão <span id="versao"></span></p>
   </div>
 </section>
 
@@ -369,7 +370,7 @@ const CFG = {
   velAndar: 4.2,           // m/s
   velDevagar: 1.9,
   maxAlvosVivos: 3,
-  versao: "aim-logger-1.0",
+  versao: "aim-logger-1.2",
 };
 
 /* ------------------------------------------------------------------ estado */
@@ -392,7 +393,7 @@ const S = {
   obstaculos: [],
   efeitos: [],                   // feedback visual transitório
   tFaseInicio: 0, tFim: 0,
-  pausado: false, correndo: false, entreRondas: false, aFechar: false,
+  pausado: false, correndo: false, entreRondas: false, aFechar: false, aAvancar: false,
   nivelInicio: null, blocos: [],
 };
 
@@ -455,6 +456,8 @@ $("#b-form").addEventListener("click", () => {
 });
 
 /* ================================================================ 3. INSTRUÇÕES */
+$("#versao").textContent = CFG.versao;
+
 $("#f-sens").addEventListener("input", e => {
   S.sens = parseFloat(e.target.value);
   $("#sens-v").textContent = S.sens.toFixed(1) + " — pode experimentar no ecrã seguinte";
@@ -534,7 +537,7 @@ function aplicaMov(code, v) {
 }
 
 document.addEventListener("pointerdown", e => {
-  if (!S.correndo || S.pausado || e.button !== 0) return;
+  if (!S.correndo || S.pausado || S.entreRondas || e.button !== 0) return;
   S.eventos.push({ t: +e.timeStamp.toFixed(3), tipo: "botao", estado: "baixo" });
   dispara(e.timeStamp);
 });
@@ -1181,7 +1184,15 @@ async function iniciar() {
   requestAnimationFrame(frame);
 }
 
+let tokenTransicao = 0;
+
 function proximoNivel() {
+  if (S.aAvancar) return;          // nunca avançar dois níveis no mesmo gesto
+  S.aAvancar = true;
+  try { avancaNivel(); } finally { S.aAvancar = false; }
+}
+
+function avancaNivel() {
   S.nivel++;
   const n = NIVEIS[S.nivel];
   if (!n) { terminar(); return; }
@@ -1241,16 +1252,21 @@ function fimDoNivel() {
   caixaMsg("Nível " + r.nivel + " concluído",
     r.pontos.toLocaleString("pt-PT") + " pontos  ·  " + r.acertos + " alvos  ·  " +
     r.precisao + " % de precisão\n\nClique para começar o nível seguinte.");
+  // um token por transição: se por alguma razão ficar um listener antigo
+  // pendurado, ele vê um token desatualizado e não faz nada
+  const meuToken = ++tokenTransicao;
   const retomar = async () => {
     cv.removeEventListener("click", retomar);
+    if (meuToken !== tokenTransicao) return;       // transição já foi tratada
+    tokenTransicao++;                              // invalida qualquer outro
     caixaMsg(null);
     await pedeLock();
-    // só agora se levanta a pausa: proximoNivel() acerta o relógio primeiro,
+    // só agora se levanta a pausa: avancaNivel() acerta o relógio primeiro,
     // senão o cronómetro do nível anterior ainda corre durante o await
     proximoNivel();
     S.pausado = false; S.entreRondas = false;
   };
-  cv.addEventListener("click", retomar);
+  cv.addEventListener("click", retomar, { once: true });
 }
 
 function verificaTempo(t) {
@@ -1324,7 +1340,8 @@ function desenhaResumo() {
     "<li>Eventos de teclado: " + S.teclas.length + "</li>" +
     "</ul><p class=\"nota\" style=\"margin:8px 0 0\">Qualidade técnica da captura: " +
     "movimento sem aceleração do sistema " + (S.unadjusted === true ? "sim" : "não") +
-    " · relógio de alta resolução " + (amb ? "sim" : "não") + "</p>";
+    " · relógio de alta resolução " + (amb ? "sim" : "não") +
+    " · versão " + CFG.versao + "</p>";
 }
 
 function montaFicheiro() {

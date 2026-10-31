@@ -23,7 +23,7 @@ def main(caminho):
     mouse, teclas, eventos = d["mouse"], d["teclas"], d["eventos"]
 
     print(f"\nFicheiro   {pathlib.Path(caminho).name}")
-    print(f"Schema     {d['schema']}")
+    print(f"Versão     {d['schema']}")
     print(f"Código     {part['id']}")
     print(f"Consentido {part['consentimento']['em']}")
 
