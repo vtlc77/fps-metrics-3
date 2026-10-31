@@ -299,7 +299,8 @@
       <button id="b-instr">Começar</button>
       <span class="nota">Ao clicar, o cursor fica preso à janela. <kbd>Esc</kbd> liberta-o.</span>
     </div>
-    <p class="nota" style="margin-top:18px;opacity:.6">versão <span id="versao"></span></p>
+    <p class="nota" style="margin-top:18px;opacity:.75">
+      versão <span id="versao"></span> · relógio: <span id="diag-relogio"></span></p>
   </div>
 </section>
 
@@ -457,6 +458,15 @@ $("#b-form").addEventListener("click", () => {
 
 /* ================================================================ 3. INSTRUÇÕES */
 $("#versao").textContent = CFG.versao;
+
+// Estado do relógio: diz de imediato se os cabeçalhos COOP/COEP estão a funcionar.
+// Neutro para o participante, decisivo para quem publica a página.
+(function mostraRelogio() {
+  const coi = (typeof crossOriginIsolated !== "undefined") && crossOriginIsolated;
+  const el = $("#diag-relogio");
+  if (coi) { el.textContent = "alta resolução"; el.style.color = "#5AD2AA"; }
+  else { el.textContent = "arredondado a 1 ms"; el.style.color = "#F2A900"; }
+})();
 
 $("#f-sens").addEventListener("input", e => {
   S.sens = parseFloat(e.target.value);
