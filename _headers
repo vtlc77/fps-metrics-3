@@ -1,0 +1,7 @@
+# Netlify / Cloudflare Pages
+# Sem estes dois cabeçalhos o browser arredonda performance.now() a 1 ms e os
+# timestamps das amostras do rato colapsam. Com eles, a resolução sobe para
+# microssegundos e crossOriginIsolated passa a true.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

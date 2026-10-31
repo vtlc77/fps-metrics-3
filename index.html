@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Estudo de Interação — Tarefa de Pontaria</title>
+<style>
+  :root{
+    --bg:#0E1319; --surface:#161C25; --surface2:#1E2733; --line:#2A3542;
+    --ink:#F2F5F8; --ink2:#A9B6C4; --mut:#6E7E8F;
+    --azul:#1F6F8B; --azul-c:#2C8CAD; --verm:#E04E39; --verde:#0F8A6A; --ambar:#F2A900;
+    --rad:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+    overflow:hidden;
+  }
+  .tela{
+    position:absolute;inset:0;display:none;overflow-y:auto;
+    padding:32px 20px 48px;
+  }
+  .tela.on{display:block}
+  .caixa{max-width:860px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:-.2px}
+  h2{font-size:17px;margin:26px 0 10px}
+  h3{font-size:13px;margin:20px 0 8px;color:var(--ink2);
+     text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+  p{margin:0 0 12px;color:var(--ink2)}
+  .lead{color:var(--ink);font-size:16px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.14em;
+       color:var(--verm);text-transform:uppercase;margin-bottom:10px}
+  .card{background:var(--surface);border:1px solid var(--line);
+        border-radius:var(--rad);padding:18px 20px;margin:14px 0}
+  .card.ok{border-color:#1C4A3C;background:#121E1B}
+  .card.no{border-color:#4A2520;background:#1C1513}
+  .card h4{margin:0 0 10px;font-size:14px;color:var(--ink)}
+  ul{margin:0;padding-left:18px;color:var(--ink2)}
+  li{margin-bottom:6px}
+  .grelha{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.grelha{grid-template-columns:1fr}}
+  label{display:block;font-size:13px;color:var(--ink2);margin:0 0 5px}
+  .campo{margin-bottom:14px}
+  input[type=text],input[type=number],select,textarea{
+    width:100%;background:var(--surface2);border:1px solid var(--line);
+    color:var(--ink);border-radius:8px;padding:9px 11px;font:inherit;font-size:14px}
+  input:focus,select:focus{outline:2px solid var(--azul);outline-offset:1px;border-color:transparent}
+  .check{display:flex;gap:10px;align-items:flex-start;margin-bottom:11px;
+         color:var(--ink);font-size:14px;cursor:pointer}
+  .check input{margin-top:3px;width:16px;height:16px;accent-color:var(--azul);flex:none}
+  button{
+    background:var(--azul);color:#fff;border:0;border-radius:9px;
+    padding:12px 22px;font:inherit;font-weight:600;font-size:15px;cursor:pointer}
+  button:hover:not(:disabled){background:var(--azul-c)}
+  button:disabled{background:#273341;color:var(--mut);cursor:not-allowed}
+  button.sec{background:transparent;border:1px solid var(--line);color:var(--ink2)}
+  button.sec:hover{border-color:var(--mut);background:transparent}
+  .barra{display:flex;gap:10px;align-items:center;margin-top:22px;flex-wrap:wrap}
+  .nota{font-size:12.5px;color:var(--mut)}
+  .aviso{background:#2A1E0A;border:1px solid #5A4414;color:#F0CE7E;
+         border-radius:8px;padding:11px 14px;font-size:13px;margin:14px 0}
+  code{background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:13px}
+  .placar{background:linear-gradient(180deg,#17222C,#141B23);border:1px solid var(--line);
+          border-radius:14px;padding:22px 24px;margin:16px 0 18px;text-align:center}
+  .placar .big{font-size:52px;font-weight:800;line-height:1;letter-spacing:-1px;
+               color:#5AD2AA;font-variant-numeric:tabular-nums}
+  .placar .biglab{font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+                  color:var(--mut);margin-top:4px}
+  .placar .mini{font-size:13.5px;color:var(--ink2);margin-top:10px}
+  .placar .recorde{display:inline-block;margin-top:12px;background:#17382E;color:#7FE3BC;
+                   border-radius:99px;padding:4px 14px;font-size:12.5px;font-weight:600}
+  table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.tab td{padding:5px 6px;border-bottom:1px solid var(--line);color:var(--ink2)}
+  table.tab tr:last-child td{border-bottom:0}
+  table.tab td:first-child{width:24px;color:var(--mut)}
+  table.tab .nm{color:var(--ink)}
+  table.tab .pt{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  table.tab tr.eu td{color:#7FE3BC}
+
+  /* ---------------------------------------------------------- jogo */
+  #jogo{display:none;position:absolute;inset:0;background:#0B0F14}
+  #jogo.on{display:block}
+  canvas{display:block;width:100%;height:100%;cursor:none}
+  .hudv.pulsa{animation:pulso .22s ease-out}
+  @keyframes pulso{0%{transform:scale(1.28);color:#5AD2AA}100%{transform:scale(1)}}
+  #hud{position:absolute;top:14px;left:0;right:0;pointer-events:none;
+       display:flex;justify-content:center;gap:34px;font-variant-numeric:tabular-nums}
+  .hudi{text-align:center}
+  .hudv{font-size:22px;font-weight:700;line-height:1}
+  .hudl{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+  #msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+       pointer-events:none}
+  #msgcx{background:rgba(14,19,25,.94);border:1px solid var(--line);border-radius:12px;
+         padding:26px 32px;max-width:520px;text-align:center}
+  #msgcx h3{margin-top:0;color:var(--ambar)}
+  #msgcx p{margin-bottom:0}
+  kbd{background:var(--surface2);border:1px solid var(--line);border-bottom-width:2px;
+      border-radius:5px;padding:1px 7px;font:inherit;font-size:12.5px;color:var(--ink)}
+</style>
+</head>
+<body>
+
+<!-- =============================================== 1. INFORMAÇÃO E CONSENTIMENTO -->
+<section class="tela on" id="t-consent">
+  <div class="caixa">
+    <span class="tag">Estudo académico · participação voluntária</span>
+    <h1>Deteção de interação humana e automatizada</h1>
+    <p class="lead">Antes de começar, leia esta página. Demora dois minutos e explica
+      exatamente o que é recolhido e para quê.</p>
+
+    <div class="aviso" id="aviso-preencher">
+      <b>Para o investigador:</b> antes de distribuir, substitua os campos marcados
+      <code>[A PREENCHER]</code> e confirme que tem aprovação ética. Este aviso desaparece
+      quando não restar nenhum campo por preencher.
+    </div>
+
+    <h2>Para que serve este estudo</h2>
+    <p>Esta tarefa faz parte de uma dissertação de mestrado em Cibersegurança na
+      Universidade Europeia. O objetivo é perceber se o movimento de um jogador humano se
+      distingue do movimento gerado por software de automação, analisando apenas a forma
+      como o rato e as teclas são usados. O propósito final é detetar automação em jogos
+      online sem ter de instalar programas de vigilância no computador dos jogadores.</p>
+    <p>Vai jogar uma tarefa curta de pontaria, em três níveis, com cerca de <b>cinco minutos</b> no total.
+      Não há nada a acertar nem a falhar que lhe diga respeito: o que interessa é a forma
+      do movimento, não o seu desempenho.</p>
+
+    <div class="grelha">
+      <div class="card ok">
+        <h4>O que é registado</h4>
+        <ul>
+          <li>Movimento do rato: deslocamento e instante de cada amostra</li>
+          <li>Cliques: instante em que carrega e em que larga</li>
+          <li>Apenas as teclas de jogo <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>
+              <kbd>Shift</kbd> <kbd>Espaço</kbd>, e só o instante em que são premidas e largadas</li>
+          <li>Eventos do jogo: quando um alvo aparece, onde está, se acertou e a que distância</li>
+          <li>As respostas que der no formulário a seguir</li>
+        </ul>
+      </div>
+      <div class="card no">
+        <h4>O que não é registado</h4>
+        <ul>
+          <li>Nenhum texto que escreva, em lado nenhum</li>
+          <li>Nenhuma tecla fora da lista acima</li>
+          <li>Nada enquanto esta página não estiver em primeiro plano</li>
+          <li>Nome, email, endereço IP ou qualquer identificador seu</li>
+          <li>Nada do que faça fora desta página — tecnicamente, esta página não consegue
+              ver fora de si própria</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Para onde vão os dados</h2>
+    <p>Para lado nenhum sem decisão sua. Tudo fica no seu computador enquanto joga. No fim
+      aparece um botão para descarregar um ficheiro, e só esse ficheiro, enviado por si,
+      chega ao investigador. Se fechar a página antes disso, não fica registo de nada.</p>
+    <p>O ficheiro é identificado por um código gerado ao acaso neste momento. Não existe
+      forma de ligar esse código a si: não é pedido o seu nome nem nenhum contacto.</p>
+
+    <h2>Os seus direitos</h2>
+    <p>A participação é voluntária. Pode desistir a qualquer momento fechando a página, sem
+      dar explicação e sem consequência nenhuma. Como os dados são anónimos, depois de
+      enviar o ficheiro já não é possível identificá-lo para o apagar — por isso a decisão
+      de enviar é o momento em que o consentimento se torna definitivo.</p>
+    <p class="nota">Responsável: [A PREENCHER: nome] · [A PREENCHER: email]<br>
+      Orientação: [A PREENCHER: nome do orientador] · Universidade Europeia<br>
+      Aprovação ética: [A PREENCHER: referência e data]</p>
+
+    <h2>Consentimento</h2>
+    <label class="check"><input type="checkbox" id="c1">
+      Li e compreendi a informação acima.</label>
+    <label class="check"><input type="checkbox" id="c2">
+      Tenho 18 anos ou mais.</label>
+    <label class="check"><input type="checkbox" id="c3">
+      Aceito que os dados descritos sejam recolhidos e usados, de forma anónima, nesta
+      investigação e em publicações que dela resultem.</label>
+    <label class="check"><input type="checkbox" id="c4">
+      Compreendo que posso desistir a qualquer momento fechando a página.</label>
+
+    <div class="barra">
+      <button id="b-consent" disabled>Aceito e quero continuar</button>
+      <span class="nota">O botão só fica ativo com as quatro caixas assinaladas.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ 2. FORMULÁRIO -->
+<section class="tela" id="t-form">
+  <div class="caixa">
+    <span class="tag">Passo 2 de 4</span>
+    <h1>Algumas perguntas rápidas</h1>
+    <p class="lead">Nenhuma destas perguntas o identifica. Servem para interpretar os
+      dados — sobretudo as do rato, que o browser não consegue detetar sozinho.</p>
+
+    <h3>Sobre si</h3>
+    <div class="grelha">
+      <div class="campo"><label for="f-idade">Escalão etário</label>
+        <select id="f-idade"><option value="">—</option><option>18–24</option>
+        <option>25–34</option><option>35–44</option><option>45–54</option>
+        <option>55 ou mais</option></select></div>
+      <div class="campo"><label for="f-mao">Mão que usa no rato</label>
+        <select id="f-mao"><option value="">—</option><option>Direita</option>
+        <option>Esquerda</option></select></div>
+      <div class="campo"><label for="f-horas">Horas de jogo por semana</label>
+        <select id="f-horas"><option value="">—</option><option>Nenhuma</option>
+        <option>Menos de 2</option><option>2 a 5</option><option>5 a 10</option>
+        <option>10 a 20</option><option>Mais de 20</option></select></div>
+      <div class="campo"><label for="f-fps">Experiência com jogos de tiro na primeira pessoa</label>
+        <select id="f-fps"><option value="">—</option><option>Nenhuma</option>
+        <option>Pouca</option><option>Alguma</option><option>Muita</option>
+        <option>Jogo competitivamente</option></select></div>
+    </div>
+
+    <h3>Sobre o rato — importante</h3>
+    <p class="nota" style="margin-top:-2px">Ratos diferentes amostram a frequências
+      diferentes. Sem esta informação não é possível distinguir o que vem da pessoa do que
+      vem do equipamento. Se não souber, escolha «Não sei»: é melhor do que adivinhar.</p>
+    <div class="grelha">
+      <div class="campo"><label for="f-rato">Marca e modelo do rato</label>
+        <input type="text" id="f-rato" placeholder="ex.: Logitech G502, ou «não sei»"></div>
+      <div class="campo"><label for="f-dpi">DPI configurado</label>
+        <input type="text" id="f-dpi" placeholder="ex.: 800, ou «não sei»"></div>
+      <div class="campo"><label for="f-poll">Taxa de polling</label>
+        <select id="f-poll"><option value="">—</option><option>125 Hz</option>
+        <option>250 Hz</option><option>500 Hz</option><option>1000 Hz</option>
+        <option>Mais de 1000 Hz</option><option>Não sei</option></select></div>
+      <div class="campo"><label for="f-sup">Superfície</label>
+        <select id="f-sup"><option value="">—</option><option>Tapete de rato</option>
+        <option>Secretária</option><option>Outra</option></select></div>
+      <div class="campo"><label for="f-acel">Aceleração do rato no sistema operativo</label>
+        <select id="f-acel"><option value="">—</option><option>Desligada</option>
+        <option>Ligada</option><option>Não sei</option></select></div>
+      <div class="campo"><label for="f-mod">Está a usar portátil com touchpad?</label>
+        <select id="f-mod"><option value="">—</option><option>Não, uso rato</option>
+        <option>Sim, touchpad</option><option>Sim, trackball ou outro</option></select></div>
+    </div>
+
+    <div class="aviso" id="av-touchpad" style="display:none">
+      O estudo precisa de um rato. Com touchpad a cinemática do movimento é completamente
+      diferente e os dados não são comparáveis. Se tiver um rato por perto, ligue-o e
+      corrija a resposta; caso contrário, obrigado pelo tempo, mas não continue.
+    </div>
+
+    <div class="barra">
+      <button id="b-form" disabled>Continuar</button>
+      <span class="nota">Responda a tudo para continuar.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== 3. INSTRUÇÕES -->
+<section class="tela" id="t-instr">
+  <div class="caixa">
+    <span class="tag">Passo 3 de 4</span>
+    <h1>Como funciona</h1>
+
+    <div class="card">
+      <h4>Três níveis, cerca de cinco minutos no total</h4>
+      <ul>
+        <li><b>Nível 1 — Mira (cerca de 1 minuto).</b> Fica parado, só usa o rato. Um alvo de
+          cada vez, sempre nas mesmas posições para todos os participantes.</li>
+        <li><b>Nível 2 — Mira e movimento (75 segundos).</b> Já pode andar com
+          <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>. Os alvos aparecem longe e
+          à sua volta.</li>
+        <li><b>Nível 3 — Mira, movimento e cobertura (75 segundos).</b> Há pilares pelo
+          meio. Alvos tapados ficam a cinzento e os tiros não contam: tem de se deslocar
+          para ganhar ângulo.</li>
+      </ul>
+      <p class="nota" style="margin:8px 0 0">Há pontuação a partir do nível 2. Alvos
+        pequenos, alvos em movimento e acertos seguidos valem mais. Entre níveis há uma
+        pausa.</p>
+    </div>
+
+    <div class="grelha">
+      <div class="card">
+        <h4>Controlos</h4>
+        <ul>
+          <li><kbd>Rato</kbd> — olhar</li>
+          <li><kbd>Botão esquerdo</kbd> — disparar</li>
+          <li><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> — andar (níveis 2 e 3)</li>
+          <li><kbd>Shift</kbd> — andar devagar</li>
+          <li><kbd>Esc</kbd> — libertar o rato e pausar</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Antes de começar</h4>
+        <ul>
+          <li>Use o rato como usa normalmente. Não tente ser mais certinho do que é.</li>
+          <li>Não mude a sensibilidade a meio.</li>
+          <li>Se falhar muito, ignore. O desempenho não é o que está a ser medido.</li>
+          <li>Pode pausar com <kbd>Esc</kbd> e retomar quando quiser.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="campo" style="max-width:320px">
+      <label for="f-sens">Sensibilidade do rato nesta tarefa</label>
+      <input type="range" id="f-sens" min="0.4" max="3" step="0.1" value="1.2" style="width:100%">
+      <div class="nota" id="sens-v">1.2 — pode experimentar no ecrã seguinte</div>
+    </div>
+
+    <div class="barra">
+      <button id="b-instr">Começar</button>
+      <span class="nota">Ao clicar, o cursor fica preso à janela. <kbd>Esc</kbd> liberta-o.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== 4. JOGO -->
+<div id="jogo">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div class="hudi"><div class="hudv" id="h-fase">—</div><div class="hudl">Parte</div></div>
+    <div class="hudi"><div class="hudv ponto" id="h-pontos">0</div><div class="hudl">Pontos</div></div>
+    <div class="hudi"><div class="hudv" id="h-seq">—</div><div class="hudl">Seguidos</div></div>
+    <div class="hudi"><div class="hudv" id="h-acerto">—</div><div class="hudl">Precisão</div></div>
+    <div class="hudi"><div class="hudv" id="h-tempo">—</div><div class="hudl">Tempo</div></div>
+  </div>
+  <div id="msg"><div id="msgcx"><h3 id="msg-t"></h3><p id="msg-p"></p></div></div>
+</div>
+
+<!-- ==================================================================== 5. FIM -->
+<section class="tela" id="t-fim">
+  <div class="caixa">
+    <span class="tag">Passo 4 de 4</span>
+    <h1>Terminou. Obrigado.</h1>
+    <div class="placar" id="pontuacao"></div>
+
+    <p class="lead">Falta um passo: descarregar o ficheiro e enviá-lo. Até o fazer, os dados
+      existem apenas neste computador.</p>
+
+    <div class="grelha">
+      <div class="card" id="resumo"></div>
+      <div class="card">
+        <h4>Tabela de pontuações</h4>
+        <p class="nota" style="margin:0 0 10px">Fica guardada <b>só neste computador</b>.
+          A alcunha nunca entra no ficheiro de dados nem chega ao investigador: serve
+          apenas para se encontrar nesta lista.</p>
+        <div class="campo" style="display:flex;gap:8px;align-items:flex-end">
+          <div style="flex:1"><label for="f-alcunha">Alcunha (opcional)</label>
+            <input type="text" id="f-alcunha" maxlength="16" placeholder="como quiser"></div>
+          <button class="sec" id="b-tabela" style="padding:9px 14px">Entrar na tabela</button>
+        </div>
+        <div id="tabela"></div>
+      </div>
+    </div>
+
+    <div class="barra">
+      <button id="b-desc">Descarregar o ficheiro</button>
+      <button class="sec" id="b-copia">Copiar o meu código</button>
+    </div>
+    <p class="nota" id="envio" style="margin-top:14px">
+      Envie o ficheiro para <b>[A PREENCHER: email]</b>. Não precisa de escrever nada no
+      corpo da mensagem — o ficheiro já traz o código anónimo da sessão.</p>
+
+    <div class="card" style="margin-top:22px">
+      <h4>Mudou de ideias?</h4>
+      <p style="margin:0">Se não quiser participar, basta não enviar o ficheiro e fechar esta
+        página. Nada foi guardado em lado nenhum.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+"use strict";
+/* ==========================================================================
+   Instrumento de recolha — tarefa de pontaria em browser
+   Dissertação de mestrado em Cibersegurança, Universidade Europeia
+
+   Sem dependências externas. Projeção 3D própria sobre canvas 2D.
+   Os dados nunca saem da máquina do participante sem ação dele.
+   ========================================================================== */
+
+const CFG = {
+  calibAlvos: 20,          // nº de alvos do nível 1 (sequência fixa, igual para todos)
+  segundosNivel2: 75,      // mira + movimento, campo aberto
+  segundosNivel3: 75,      // mira + movimento + obstáculos
+  nPilares: 9,
+  raioPilar: 0.9,
+  alturaPilar: 3.6,
+  raioJogador: 0.45,
+  fovGraus: 90,
+  raioAlvoPadrao: 0.42,    // metros
+  distCalib: 14,           // distância fixa dos alvos de calibração
+  velAndar: 4.2,           // m/s
+  velDevagar: 1.9,
+  maxAlvosVivos: 3,
+  versao: "aim-logger-1.0",
+};
+
+/* ------------------------------------------------------------------ estado */
+const S = {
+  id: null, consentimento: null, form: {},
+  sens: 1.2,
+  mouse: [],      // [t, dx, dy]
+  teclas: [],     // [t, code, 1|0]
+  vista: [],      // [t, yaw, pitch]  (um por frame)
+  eventos: [],    // objetos
+  unadjusted: null,
+  fase: "espera", // espera | calib | jogo | fim
+  cam: { x: 0, y: 1.65, z: 0, yaw: 0, pitch: 0 },
+  mov: { w: 0, a: 0, s: 0, d: 0, shift: 0 },
+  alvos: [], proxId: 1,
+  calibIdx: 0, calibSeq: [],
+  disparos: 0, acertos: 0,
+  pontos: 0, sequencia: 0, melhorSequencia: 0,
+  nivel: 0, niveis: [],          // resumo de cada nível
+  obstaculos: [],
+  efeitos: [],                   // feedback visual transitório
+  alcunha: null,                 // só localStorage, nunca no ficheiro de dados
+  tFaseInicio: 0, tFim: 0,
+  pausado: false, correndo: false, entreRondas: false, rondaInicio: null,
+};
+
+const TECLAS_PERMITIDAS = new Set(
+  ["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","Space"]);
+
+const agora = () => performance.now();
+const $ = (s) => document.querySelector(s);
+const ev = (tipo, extra) => S.eventos.push(Object.assign({ t: +agora().toFixed(3), tipo }, extra));
+
+function novoId() {
+  const b = new Uint8Array(8);
+  crypto.getRandomValues(b);
+  return Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+}
+
+/* ============================================================ 1. CONSENTIMENTO */
+const caixas = ["c1","c2","c3","c4"].map(i => document.getElementById(i));
+caixas.forEach(c => c.addEventListener("change", () => {
+  $("#b-consent").disabled = !caixas.every(x => x.checked);
+}));
+
+// esconde o aviso se o investigador já preencheu tudo
+if (!document.body.innerHTML.includes("[A PREENCHER")) {
+  $("#aviso-preencher").style.display = "none";
+}
+
+$("#b-consent").addEventListener("click", () => {
+  S.id = novoId();
+  S.consentimento = {
+    em: new Date().toISOString(),
+    itens: { leu: true, maiorIdade: true, usoDeDados: true, desistencia: true },
+  };
+  mostra("t-form");
+});
+
+/* ================================================================ 2. FORMULÁRIO */
+const camposForm = ["f-idade","f-mao","f-horas","f-fps","f-rato","f-dpi","f-poll",
+                    "f-sup","f-acel","f-mod"];
+function validaForm() {
+  const tp = $("#f-mod").value.startsWith("Sim");
+  $("#av-touchpad").style.display = tp ? "block" : "none";
+  const todos = camposForm.every(id => document.getElementById(id).value.trim() !== "");
+  $("#b-form").disabled = !todos || tp;
+}
+camposForm.forEach(id => {
+  const e = document.getElementById(id);
+  e.addEventListener("input", validaForm);
+  e.addEventListener("change", validaForm);
+});
+$("#b-form").addEventListener("click", () => {
+  S.form = {
+    idade: $("#f-idade").value, mao: $("#f-mao").value,
+    horasSemana: $("#f-horas").value, experienciaFPS: $("#f-fps").value,
+    rato: $("#f-rato").value.trim(), dpi: $("#f-dpi").value.trim(),
+    polling: $("#f-poll").value, superficie: $("#f-sup").value,
+    aceleracaoSO: $("#f-acel").value, dispositivo: $("#f-mod").value,
+  };
+  mostra("t-instr");
+});
+
+/* ================================================================ 3. INSTRUÇÕES */
+$("#f-sens").addEventListener("input", e => {
+  S.sens = parseFloat(e.target.value);
+  $("#sens-v").textContent = S.sens.toFixed(1) + " — pode experimentar no ecrã seguinte";
+});
+$("#b-instr").addEventListener("click", iniciar);
+
+function mostra(id) {
+  document.querySelectorAll(".tela").forEach(t => t.classList.remove("on"));
+  $("#jogo").classList.remove("on");
+  if (id === "jogo") $("#jogo").classList.add("on");
+  else document.getElementById(id).classList.add("on");
+}
+
+/* ===================================================================== 4. JOGO */
+const cv = $("#cv"), ctx = cv.getContext("2d", { alpha: false });
+let LARG = 0, ALT = 0, DPR = 1, FOCAL = 0;
+
+function redimensiona() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  LARG = Math.floor(cv.clientWidth * DPR);
+  ALT = Math.floor(cv.clientHeight * DPR);
+  cv.width = LARG; cv.height = ALT;
+  FOCAL = (ALT / 2) / Math.tan((CFG.fovGraus * Math.PI / 180) / 2);
+}
+window.addEventListener("resize", () => { if (S.correndo) redimensiona(); });
+
+/* ------------------------------------------------- captura de rato e teclado */
+function registaAmostra(e, idx) {
+  // movementX/Y já vêm sem aceleração do SO quando unadjustedMovement foi aceite
+  const dx = e.movementX || 0, dy = e.movementY || 0;
+  if (dx === 0 && dy === 0) return;
+  // o 4.º valor é a posição dentro da rajada do frame: preserva a ordem mesmo
+  // quando os timestamps colidem por falta de resolução do relógio
+  S.mouse.push([+e.timeStamp.toFixed(3), dx, dy, idx]);
+  const k = S.sens * 0.0022;
+  S.cam.yaw += dx * k;
+  S.cam.pitch -= dy * k;
+  const lim = 85 * Math.PI / 180;
+  S.cam.pitch = Math.max(-lim, Math.min(lim, S.cam.pitch));
+  if (S.cam.yaw > Math.PI) S.cam.yaw -= 2 * Math.PI;
+  if (S.cam.yaw < -Math.PI) S.cam.yaw += 2 * Math.PI;
+}
+
+function aoMover(e) {
+  if (!S.correndo || S.pausado) return;
+  // getCoalescedEvents devolve as amostras intermédias à taxa do dispositivo
+  if (typeof e.getCoalescedEvents === "function") {
+    const cs = e.getCoalescedEvents();
+    if (cs && cs.length) { for (let i = 0; i < cs.length; i++) registaAmostra(cs[i], i); return; }
+  }
+  registaAmostra(e, 0);
+}
+
+const temRaw = "onpointerrawupdate" in window;
+document.addEventListener(temRaw ? "pointerrawupdate" : "pointermove", aoMover, { passive: true });
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Escape") return;            // o browser trata do pointer lock
+  if (!S.correndo || !TECLAS_PERMITIDAS.has(e.code)) return;
+  // no nível 1 as teclas continuam a ser registadas, mas não movem a câmara
+  e.preventDefault();
+  if (!e.repeat) {                            // auto-repeat não é input novo
+    S.teclas.push([+e.timeStamp.toFixed(3), e.code, 1]);
+    aplicaMov(e.code, 1);
+  }
+});
+document.addEventListener("keyup", e => {
+  if (!S.correndo || !TECLAS_PERMITIDAS.has(e.code)) return;
+  e.preventDefault();
+  S.teclas.push([+e.timeStamp.toFixed(3), e.code, 0]);
+  aplicaMov(e.code, 0);
+});
+function aplicaMov(code, v) {
+  if (code === "KeyW") S.mov.w = v; else if (code === "KeyS") S.mov.s = v;
+  else if (code === "KeyA") S.mov.a = v; else if (code === "KeyD") S.mov.d = v;
+  else if (code.startsWith("Shift")) S.mov.shift = v;
+}
+
+document.addEventListener("pointerdown", e => {
+  if (!S.correndo || S.pausado || e.button !== 0) return;
+  S.eventos.push({ t: +e.timeStamp.toFixed(3), tipo: "botao", estado: "baixo" });
+  dispara(e.timeStamp);
+});
+document.addEventListener("pointerup", e => {
+  if (!S.correndo || e.button !== 0) return;
+  S.eventos.push({ t: +e.timeStamp.toFixed(3), tipo: "botao", estado: "cima" });
+});
+
+/* ---------------------------------------------------------- pointer lock */
+async function pedeLock() {
+  try {
+    const p = cv.requestPointerLock({ unadjustedMovement: true });
+    if (p && typeof p.then === "function") { await p; S.unadjusted = true; return; }
+    S.unadjusted = null;                       // browser antigo: não dá para saber
+  } catch (err) {
+    // o browser recusou o movimento sem aceleração; tenta o pedido simples.
+    // tem de ser aguardado, senão a rejeição fica por tratar e rebenta na consola
+    S.unadjusted = false;
+    try {
+      const p2 = cv.requestPointerLock();
+      if (p2 && typeof p2.then === "function") await p2;
+    } catch (e2) {
+      ev("pointerlock_recusado", { erro: String(e2 && e2.name || e2) });
+    }
+  }
+}
+document.addEventListener("pointerlockchange", () => {
+  const preso = document.pointerLockElement === cv;
+  if (!preso && S.correndo && S.fase !== "fim" && !S.entreRondas) {
+    S.pausado = true;
+    ev("pausa", { motivo: "pointerlock perdido" });
+    caixaMsg("Em pausa", "Clique no ecrã para continuar.");
+  } else if (preso && S.pausado) {
+    S.pausado = false; ev("retoma"); caixaMsg(null);
+  }
+});
+cv.addEventListener("click", () => { if (S.pausado && !S.entreRondas) pedeLock(); });
+
+/* ------------------------------------------------------------- geometria 3D */
+function baseCam() {
+  const { yaw, pitch } = S.cam;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const f = { x: sy * cp, y: sp, z: -cy * cp };    // frente
+  const r = { x: cy, y: 0, z: sy };                // direita
+  const u = { x: r.y * f.z - r.z * f.y,            // cima = r × f
+              y: r.z * f.x - r.x * f.z,
+              z: r.x * f.y - r.y * f.x };
+  return { f, r, u };
+}
+const dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+
+function projeta(alvo, B) {
+  const v = { x: alvo.x - S.cam.x, y: alvo.y - S.cam.y, z: alvo.z - S.cam.z };
+  const prof = dot(v, B.f);
+  if (prof <= 0.25) return null;
+  return {
+    sx: LARG / 2 + FOCAL * dot(v, B.r) / prof,
+    sy: ALT / 2 - FOCAL * dot(v, B.u) / prof,
+    sr: FOCAL * alvo.r / prof,
+    prof,
+    dist: Math.hypot(v.x, v.y, v.z),
+  };
+}
+
+/** Ângulo entre a direção da mira e o centro do alvo, em graus. */
+function erroAngular(alvo, B) {
+  const v = { x: alvo.x - S.cam.x, y: alvo.y - S.cam.y, z: alvo.z - S.cam.z };
+  const n = Math.hypot(v.x, v.y, v.z) || 1;
+  const c = Math.max(-1, Math.min(1, dot(v, B.f) / n));
+  return Math.acos(c) * 180 / Math.PI;
+}
+
+/* -------------------------------------------------------------- obstáculos */
+/** Pilares verticais. Obrigam o jogador a reposicionar-se para ter ângulo,
+ *  que é precisamente o que gera dados de teclado em quantidade útil. */
+function geraObstaculos() {
+  const o = [];
+  for (let i = 0; i < CFG.nPilares; i++) {
+    const ang = (i / CFG.nPilares) * Math.PI * 2 + (i % 2) * 0.35;
+    const d = 5.5 + (i % 3) * 3.2;
+    o.push({ x: Math.cos(ang) * d, z: Math.sin(ang) * d,
+             r: CFG.raioPilar * (0.8 + (i % 3) * 0.18), h: CFG.alturaPilar });
+  }
+  return o;
+}
+
+/** Impede o jogador de entrar num pilar: empurra-o para fora pelo caminho curto. */
+function resolveColisao(px, pz) {
+  for (const o of S.obstaculos) {
+    const dx = px - o.x, dz = pz - o.z;
+    const d = Math.hypot(dx, dz), min = o.r + CFG.raioJogador;
+    if (d < min && d > 1e-6) { px = o.x + (dx / d) * min; pz = o.z + (dz / d) * min; }
+  }
+  return [px, pz];
+}
+
+/** O alvo está visível, ou há um pilar pelo meio? */
+function temLinhaDeVista(alvo) {
+  if (!S.obstaculos.length) return true;
+  const ox = S.cam.x, oz = S.cam.z, oy = S.cam.y;
+  const dx = alvo.x - ox, dz = alvo.z - oz, dy = alvo.y - oy;
+  const comp = Math.hypot(dx, dz);
+  if (comp < 1e-6) return true;
+  const ux = dx / comp, uz = dz / comp;
+  for (const o of S.obstaculos) {
+    // interseção raio-círculo no plano XZ
+    const fx = ox - o.x, fz = oz - o.z;
+    const b = 2 * (fx * ux + fz * uz);
+    const c = fx * fx + fz * fz - o.r * o.r;
+    const disc = b * b - 4 * c;
+    if (disc < 0) continue;
+    const raiz = Math.sqrt(disc);
+    for (const t of [(-b - raiz) / 2, (-b + raiz) / 2]) {
+      if (t <= 0.1 || t >= comp) continue;
+      const alturaAi = oy + dy * (t / comp);   // altura do raio nesse ponto
+      if (alturaAi < o.h) return false;        // o pilar tapa
+    }
+  }
+  return true;
+}
+
+function desenhaObstaculo(o, B) {
+  const dx = o.x - S.cam.x, dz = o.z - S.cam.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-6) return;
+  const px = -dz / d * o.r, pz = dx / d * o.r;   // perpendicular à linha de visão
+  const A = { x: o.x + px, z: o.z + pz }, C = { x: o.x - px, z: o.z - pz };
+  const p = [
+    projetaPonto({ x: A.x, y: 0,   z: A.z }, B),
+    projetaPonto({ x: C.x, y: 0,   z: C.z }, B),
+    projetaPonto({ x: C.x, y: o.h, z: C.z }, B),
+    projetaPonto({ x: A.x, y: o.h, z: A.z }, B),
+  ];
+  if (p.some(c => !c)) return;
+
+  // sombra de contacto no chão: é isto que faz o pilar assentar
+  const base = projetaPonto({ x: o.x, y: 0, z: o.z }, B);
+  if (base) {
+    const larg = Math.abs(p[1].sx - p[0].sx) / 2;
+    ctx.beginPath();
+    ctx.ellipse(base.sx, base.sy, Math.max(larg * 1.15, 2), Math.max(larg * 0.34, 1),
+                0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fill();
+  }
+
+  // corpo, com gradiente lateral para sugerir a curvatura do cilindro
+  const prox = Math.max(0, Math.min(1, 1 - d / 34));
+  const g = ctx.createLinearGradient(p[0].sx, 0, p[1].sx, 0);
+  const c1 = Math.round(20 + 14 * prox), c2 = Math.round(34 + 22 * prox);
+  g.addColorStop(0,    "rgb(" + c1 + "," + (c1 + 9) + "," + (c1 + 16) + ")");
+  g.addColorStop(0.42, "rgb(" + c2 + "," + (c2 + 11) + "," + (c2 + 18) + ")");
+  g.addColorStop(1,    "rgb(" + c1 + "," + (c1 + 9) + "," + (c1 + 16) + ")");
+  ctx.beginPath();
+  ctx.moveTo(p[0].sx, p[0].sy);
+  for (let i = 1; i < 4; i++) ctx.lineTo(p[i].sx, p[i].sy);
+  ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+
+  // tampo: elipse que fecha o cilindro em cima
+  const topo = projetaPonto({ x: o.x, y: o.h, z: o.z }, B);
+  if (topo && topo.sy < p[3].sy + 4) {
+    const larg = Math.abs(p[2].sx - p[3].sx) / 2;
+    ctx.beginPath();
+    ctx.ellipse(topo.sx, topo.sy, Math.max(larg, 1), Math.max(larg * 0.3, 0.6), 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgb(" + (c2 + 12) + "," + (c2 + 23) + "," + (c2 + 32) + ")";
+    ctx.fill();
+  }
+  ctx.strokeStyle = "rgba(130,170,200,.26)"; ctx.lineWidth = 1.1 * DPR;
+  ctx.beginPath();
+  ctx.moveTo(p[0].sx, p[0].sy); ctx.lineTo(p[3].sx, p[3].sy);
+  ctx.moveTo(p[1].sx, p[1].sy); ctx.lineTo(p[2].sx, p[2].sy);
+  ctx.stroke();
+}
+
+/* ------------------------------------------------------------------- alvos */
+function criaAlvo(cfg) {
+  const a = Object.assign({
+    id: S.proxId++, r: CFG.raioAlvoPadrao,
+    vx: 0, vz: 0, nascido: agora(), primeiroMov: null,
+  }, cfg);
+  S.alvos.push(a);
+  ev("alvo_aparece", { id: a.id, nivel: S.nivel,
+                       x: +a.x.toFixed(3), y: +a.y.toFixed(3), z: +a.z.toFixed(3),
+                       raio: a.r, movel: !!(a.vx || a.vz),
+                       tapado: S.obstaculos.length ? !temLinhaDeVista(a) : false,
+                       posJogador: { x: +S.cam.x.toFixed(2), z: +S.cam.z.toFixed(2) },
+                       erroAngularInicial: +erroAngular(a, baseCam()).toFixed(3) });
+  return a;
+}
+
+/** Sequência de calibração: igual para todos os participantes. */
+function geraCalib() {
+  const seq = [];
+  const direcoes = [0, 45, 90, 135, 180, 225, 270, 315];
+  const amplitudes = [8, 16, 26];      // graus de excentricidade
+  const raios = [0.30, 0.50];          // alvos pequenos e grandes
+  let i = 0;
+  for (let n = 0; n < CFG.calibAlvos; n++) {
+    const dir = direcoes[(n * 3) % direcoes.length] * Math.PI / 180;
+    const amp = amplitudes[i % amplitudes.length] * Math.PI / 180;
+    const raio = raios[(i >> 1) % raios.length];
+    i++;
+    // posição a partir do centro de referência (yaw 0, pitch 0)
+    const yaw = Math.sin(dir) * amp, pitch = Math.cos(dir) * amp;
+    seq.push({
+      x: Math.sin(yaw) * Math.cos(pitch) * CFG.distCalib,
+      y: 1.65 + Math.sin(pitch) * CFG.distCalib,
+      z: -Math.cos(yaw) * Math.cos(pitch) * CFG.distCalib,
+      r: raio,
+      meta: { ampGraus: +(amp * 180 / Math.PI).toFixed(1),
+              dirGraus: +(dir * 180 / Math.PI).toFixed(1), raio },
+    });
+  }
+  return seq;
+}
+
+function proximoCalib() {
+  if (S.calibIdx >= S.calibSeq.length) { fimDoNivel(); return; }
+  const c = S.calibSeq[S.calibIdx++];
+  criaAlvo(c);
+}
+
+function alvoAleatorio() {
+  // no nível 3 tenta colocar alvos sem linha de vista, para forçar deslocação
+  if (S.nivel === 3) {
+    for (let tent = 0; tent < 14; tent++) {
+      const a = novoAlvoEm(11 + Math.random() * 13);
+      if (!temLinhaDeVista(a)) return a;
+      S.alvos.pop();
+      ev("alvo_descartado", {});
+      S.proxId--;
+    }
+  }
+  return novoAlvoEm(S.nivel === 2 ? (12 + Math.random() * 13) : (9 + Math.random() * 14));
+}
+
+function novoAlvoEm(dist) {
+  const ang = Math.random() * Math.PI * 2;
+  const d = dist;
+  const movel = Math.random() < (S.nivel === 3 ? 0.25 : 0.4);
+  const a = criaAlvo({
+    x: S.cam.x + Math.sin(ang) * d,
+    y: 1.1 + Math.random() * 1.9,
+    z: S.cam.z - Math.cos(ang) * d,
+    r: 0.30 + Math.random() * 0.26,
+  });
+  if (movel) {
+    const v = 1.2 + Math.random() * 2.0, dir = Math.random() * Math.PI * 2;
+    a.vx = Math.cos(dir) * v; a.vz = Math.sin(dir) * v;
+  }
+  return a;
+}
+
+/* ----------------------------------------------------------------- disparo */
+/** Pontuação: recompensa alvos pequenos e rapidez, e premeia sequências.
+ *  Nada disto mexe na câmara — o traço da mira tem de ficar limpo. */
+function pontuaAcerto(alvo, t) {
+  const dificuldade = CFG.raioAlvoPadrao / alvo.r;            // alvo pequeno vale mais
+  const tempo = t - alvo.nascido;
+  const rapidez = Math.max(0.5, Math.min(3, 1400 / Math.max(tempo, 120)));
+  const movel = (alvo.vx || alvo.vz) ? 1.35 : 1;
+  S.sequencia++;
+  S.melhorSequencia = Math.max(S.melhorSequencia, S.sequencia);
+  const mult = 1 + Math.min(S.sequencia, 10) * 0.1;
+  const p = Math.round(100 * dificuldade * rapidez * movel * mult);
+  S.pontos += p;
+  return { pontos: p, mult };
+}
+
+function efeito(tipo, alvo, texto) {
+  S.efeitos.push({ tipo, t0: agora(), x: alvo.x, y: alvo.y, z: alvo.z,
+                   r: alvo.r, texto: texto || null });
+  if (S.efeitos.length > 40) S.efeitos.shift();
+}
+
+function dispara(t) {
+  const B = baseCam();
+  S.disparos++;
+  let melhor = null, melhorErro = Infinity, bloqueado = false;
+  for (const a of S.alvos) {
+    const e = erroAngular(a, B);
+    const p = projeta(a, B);
+    if (!p) continue;
+    const limite = Math.asin(Math.min(1, a.r / Math.max(p.dist, a.r))) * 180 / Math.PI;
+    if (e <= limite) {
+      if (!temLinhaDeVista(a)) { bloqueado = true; continue; }   // pilar pelo meio
+      if (e < melhorErro) { melhor = a; melhorErro = e; }
+    }
+    if (e < melhorErro && !melhor) melhorErro = e;
+  }
+  if (melhor) {
+    S.acertos++;
+    const sc = S.nivel >= 2 ? pontuaAcerto(melhor, t) : { pontos: 0, mult: 1 };
+    efeito("acerto", melhor, sc.pontos ? "+" + sc.pontos : null);
+    ev("disparo", { acertou: true, alvo: melhor.id,
+      erroGraus: +melhorErro.toFixed(4),
+      tempoDesdeAparecer: +(t - melhor.nascido).toFixed(3),
+      tempoDesdePrimeiroMov: melhor.primeiroMov == null ? null
+        : +(t - melhor.primeiroMov).toFixed(3),
+      pontos: sc.pontos, sequencia: S.sequencia, fase: S.fase, nivel: S.nivel });
+    S.alvos = S.alvos.filter(a => a !== melhor);
+    if (S.nivel === 1) proximoCalib(); else alvoAleatorio();
+  } else {
+    if (S.nivel >= 2) S.sequencia = 0;
+    S.efeitos.push({ tipo: "falha", t0: agora() });
+    ev("disparo", { acertou: false, fase: S.fase, nivel: S.nivel,
+      bloqueadoPorPilar: bloqueado,
+      erroGraus: Number.isFinite(melhorErro) ? +melhorErro.toFixed(4) : null });
+  }
+  atualizaHud();
+}
+
+/* -------------------------------------------------------------- ciclo do jogo */
+let tAnterior = 0;
+function frame(t) {
+  if (!S.correndo) return;
+  const dt = Math.min((t - tAnterior) / 1000, 0.1);
+  tAnterior = t;
+
+  if (!S.pausado) {
+    const B = baseCam();
+
+    // movimento do jogador (só no bloco livre)
+    if (S.nivel >= 2) {
+      const vel = S.mov.shift ? CFG.velDevagar : CFG.velAndar;
+      const fr = (S.mov.w - S.mov.s), la = (S.mov.d - S.mov.a);
+      if (fr || la) {
+        const n = Math.hypot(fr, la) || 1;
+        const hx = Math.sin(S.cam.yaw), hz = -Math.cos(S.cam.yaw);
+        let nx = S.cam.x + ((hx * fr + B.r.x * la) / n) * vel * dt;
+        let nz = S.cam.z + ((hz * fr + B.r.z * la) / n) * vel * dt;
+        const lim = 26;                                  // arena limitada
+        nx = Math.max(-lim, Math.min(lim, nx));
+        nz = Math.max(-lim, Math.min(lim, nz));
+        [S.cam.x, S.cam.z] = resolveColisao(nx, nz);
+      }
+    }
+
+    // alvos móveis
+    for (const a of S.alvos) {
+      if (a.vx || a.vz) {
+        a.x += a.vx * dt; a.z += a.vz * dt;
+        const dx = a.x - S.cam.x, dz = a.z - S.cam.z;
+        if (Math.hypot(dx, dz) > 26 || Math.hypot(dx, dz) < 5) { a.vx *= -1; a.vz *= -1; }
+      }
+      // instante em que a mira começou a mexer depois do alvo aparecer
+      if (a.primeiroMov == null && S.mouse.length) {
+        const ult = S.mouse[S.mouse.length - 1][0];
+        if (ult > a.nascido) a.primeiroMov = ult;
+      }
+    }
+
+    S.vista.push([+t.toFixed(3), +S.cam.yaw.toFixed(5), +S.cam.pitch.toFixed(5)]);
+    desenha(B);
+    verificaTempo(t);
+  }
+  requestAnimationFrame(frame);
+}
+
+function desenha(B) {
+  // céu e chão, para a vertical ser legível
+  const hor = ALT / 2 + FOCAL * Math.tan(S.cam.pitch);
+  ctx.fillStyle = "#0B0F14"; ctx.fillRect(0, 0, LARG, Math.max(0, Math.min(ALT, hor)));
+  ctx.fillStyle = "#0D141B"; ctx.fillRect(0, Math.max(0, Math.min(ALT, hor)), LARG, ALT);
+
+  desenhaGrelha(B);
+
+  ctx.strokeStyle = "#24323F"; ctx.lineWidth = 1 * DPR;
+  ctx.beginPath(); ctx.moveTo(0, hor); ctx.lineTo(LARG, hor); ctx.stroke();
+
+  // pilares e alvos numa só lista, do mais longe para o mais perto,
+  // para a oclusão sair correta sem buffer de profundidade
+  const cena = [];
+  for (const o of S.obstaculos) {
+    const prof = Math.hypot(o.x - S.cam.x, o.z - S.cam.z);
+    cena.push({ prof, pilar: o });
+  }
+  const vis = [];
+  for (const a of S.alvos) {
+    const p = projeta(a, B);
+    if (p) { vis.push([a, p]); cena.push({ prof: p.prof, alvo: a, p }); }
+  }
+  cena.sort((u, v) => v.prof - u.prof);
+  for (const item of cena) {
+    if (item.pilar) { desenhaObstaculo(item.pilar, B); continue; }
+    const a = item.alvo, p = item.p;
+    // sombra no chão, para dar profundidade
+    const ch = projetaPonto({ x: a.x, y: 0, z: a.z }, B);
+    if (ch) {
+      ctx.beginPath();
+      ctx.ellipse(ch.sx, ch.sy, Math.max(p.sr * 0.9, 1), Math.max(p.sr * 0.3, 0.6), 0, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, p.sr, 0, Math.PI * 2);
+    const tapado = S.obstaculos.length && !temLinhaDeVista(a);
+    ctx.fillStyle = tapado ? "#4A5968" : (a.vx || a.vz) ? "#D2503A" : "#2B86A4";
+    ctx.fill();
+    ctx.lineWidth = 2 * DPR; ctx.strokeStyle = "rgba(255,255,255,.65)"; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, Math.max(p.sr * 0.2, 1.5 * DPR), 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
+  }
+
+  desenhaEfeitos(B);
+  desenhaMira();
+}
+
+/** Feedback de acerto e falha. Nunca mexe na câmara: o traço tem de ficar limpo. */
+function desenhaEfeitos(B) {
+  const t = agora(), DUR = 620;
+  S.efeitos = S.efeitos.filter(f => t - f.t0 < DUR);
+  for (const f of S.efeitos) {
+    const k = (t - f.t0) / DUR;                 // 0 -> 1
+    if (f.tipo === "falha") continue;
+    const p = projetaPonto({ x: f.x, y: f.y, z: f.z }, B);
+    if (!p) continue;
+    const base = FOCAL * f.r / Math.max(0.5, Math.hypot(f.x - S.cam.x, f.y - S.cam.y, f.z - S.cam.z));
+    // anel a expandir
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, base * (1 + k * 2.2), 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(90,210,170," + (0.85 * (1 - k)).toFixed(3) + ")";
+    ctx.lineWidth = 2.5 * DPR * (1 - k * 0.6);
+    ctx.stroke();
+    // pontos a subir
+    if (f.texto) {
+      ctx.font = (600) + " " + (17 * DPR) + "px system-ui,-apple-system,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(120,235,190," + (1 - k * k).toFixed(3) + ")";
+      ctx.fillText(f.texto, p.sx, p.sy - base - 10 * DPR - k * 34 * DPR);
+    }
+  }
+}
+
+/** Grelha no chão: é o que dá noção de deslocamento quando o jogador anda. */
+function desenhaGrelha(B) {
+  const PASSO = 4, EXT = 40;
+  const bx = Math.round(S.cam.x / PASSO) * PASSO;
+  const bz = Math.round(S.cam.z / PASSO) * PASSO;
+  for (let g = -EXT; g <= EXT; g += PASSO) {
+    const d = Math.abs(g) / EXT;
+    ctx.strokeStyle = "rgba(90,125,155," + (0.30 * (1 - d * 0.75)).toFixed(3) + ")";
+    ctx.lineWidth = 1 * DPR;
+    linha3D({ x: bx + g, y: 0, z: bz - EXT }, { x: bx + g, y: 0, z: bz + EXT }, B);
+    linha3D({ x: bx - EXT, y: 0, z: bz + g }, { x: bx + EXT, y: 0, z: bz + g }, B);
+  }
+}
+
+/** Desenha um segmento 3D, cortando-o no plano próximo da câmara. */
+function linha3D(p0, p1, B) {
+  const NEAR = 0.4;
+  const v0 = { x: p0.x - S.cam.x, y: p0.y - S.cam.y, z: p0.z - S.cam.z };
+  const v1 = { x: p1.x - S.cam.x, y: p1.y - S.cam.y, z: p1.z - S.cam.z };
+  let d0 = dot(v0, B.f), d1 = dot(v1, B.f);
+  if (d0 < NEAR && d1 < NEAR) return;
+  let a = v0, b = v1;
+  if (d0 < NEAR) { const t = (NEAR - d0) / (d1 - d0);
+    a = { x: v0.x + (v1.x - v0.x) * t, y: v0.y + (v1.y - v0.y) * t, z: v0.z + (v1.z - v0.z) * t };
+    d0 = NEAR; }
+  else if (d1 < NEAR) { const t = (NEAR - d1) / (d0 - d1);
+    b = { x: v1.x + (v0.x - v1.x) * t, y: v1.y + (v0.y - v1.y) * t, z: v1.z + (v0.z - v1.z) * t };
+    d1 = NEAR; }
+  ctx.beginPath();
+  ctx.moveTo(LARG / 2 + FOCAL * dot(a, B.r) / d0, ALT / 2 - FOCAL * dot(a, B.u) / d0);
+  ctx.lineTo(LARG / 2 + FOCAL * dot(b, B.r) / d1, ALT / 2 - FOCAL * dot(b, B.u) / d1);
+  ctx.stroke();
+}
+
+function desenhaMira() {
+  const t = agora();
+  const falhou = S.efeitos.some(f => f.tipo === "falha" && t - f.t0 < 180);
+  const acertou = S.efeitos.some(f => f.tipo === "acerto" && t - f.t0 < 180);
+  const cx = LARG / 2, cy = ALT / 2;
+  const b = (acertou ? 13 : 10) * DPR, g = 3.5 * DPR;
+  ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3.4 * DPR;
+  tracaMira(cx, cy, b, g);
+  ctx.strokeStyle = falhou ? "#E04E39" : acertou ? "#5AD2AA" : "#F4F7FA";
+  ctx.lineWidth = 1.6 * DPR;
+  tracaMira(cx, cy, b, g);
+}
+function tracaMira(cx, cy, b, g) {
+  ctx.beginPath();
+  ctx.moveTo(cx - b, cy); ctx.lineTo(cx - g, cy);
+  ctx.moveTo(cx + g, cy); ctx.lineTo(cx + b, cy);
+  ctx.moveTo(cx, cy - b); ctx.lineTo(cx, cy - g);
+  ctx.moveTo(cx, cy + g); ctx.lineTo(cx, cy + b);
+  ctx.stroke();
+}
+
+function projetaPonto(pt, B) {
+  const v = { x: pt.x - S.cam.x, y: pt.y - S.cam.y, z: pt.z - S.cam.z };
+  const prof = dot(v, B.f);
+  if (prof <= 0.25) return null;
+  return { sx: LARG / 2 + FOCAL * dot(v, B.r) / prof, sy: ALT / 2 - FOCAL * dot(v, B.u) / prof };
+}
+
+/* ------------------------------------------------------------------- níveis */
+const NIVEIS = {
+  1: { nome: "Mira", desc: "Fique parado. Só o rato. Acerte em cada alvo que aparecer.",
+       movimento: false, obstaculos: false },
+  2: { nome: "Mira e movimento", desc: "Agora pode andar com W A S D. Os alvos aparecem longe: aproxime-se.",
+       movimento: true, obstaculos: false },
+  3: { nome: "Mira, movimento e cobertura", desc: "Há pilares pelo meio. Se um alvo estiver tapado, tem de se deslocar para ganhar ângulo.",
+       movimento: true, obstaculos: true },
+};
+
+async function iniciar() {
+  mostra("jogo");
+  redimensiona();
+  S.correndo = true;
+  await pedeLock();
+  ev("sessao_inicio", { unadjustedMovement: S.unadjusted, sens: S.sens,
+                        rawUpdate: temRaw, dpr: DPR, larg: LARG, alt: ALT,
+                        crossOriginIsolated: (typeof crossOriginIsolated !== "undefined")
+                          ? crossOriginIsolated : null,
+                        gamificacao: true, niveis: 3 });
+  S.nivel = 0;
+  proximoNivel();
+  tAnterior = agora();
+  requestAnimationFrame(frame);
+}
+
+function proximoNivel() {
+  S.nivel++;
+  const n = NIVEIS[S.nivel];
+  if (!n) { terminar(); return; }
+
+  S.fase = "n" + S.nivel;
+  S.tFaseInicio = agora();
+  S.alvos = []; S.sequencia = 0;
+  S.cam = { x: 0, y: 1.65, z: 0, yaw: 0, pitch: 0 };
+  S.obstaculos = n.obstaculos ? geraObstaculos() : [];
+  S.nivelInicio = { pontos: S.pontos, acertos: S.acertos, disparos: S.disparos,
+                    teclas: S.teclas.length, t: agora() };
+
+  ev("nivel_inicio", { nivel: S.nivel, nome: n.nome,
+                       movimento: n.movimento, obstaculos: n.obstaculos,
+                       nPilares: S.obstaculos.length,
+                       pilares: S.obstaculos.map(o => ({ x: +o.x.toFixed(2),
+                         z: +o.z.toFixed(2), r: +o.r.toFixed(2), h: o.h })),
+                       duracao: S.nivel === 1 ? null
+                         : (S.nivel === 2 ? CFG.segundosNivel2 : CFG.segundosNivel3) });
+
+  caixaMsg("Nível " + S.nivel + " de 3 — " + n.nome, n.desc, 3200);
+
+  if (S.nivel === 1) {
+    S.calibSeq = geraCalib(); S.calibIdx = 0;
+    proximoCalib();
+  } else {
+    for (let i = 0; i < CFG.maxAlvosVivos; i++) alvoAleatorio();
+  }
+  atualizaHud();
+}
+
+function fimDoNivel() {
+  const i = S.nivelInicio;
+  const r = {
+    nivel: S.nivel, nome: NIVEIS[S.nivel].nome,
+    pontos: S.pontos - i.pontos,
+    acertos: S.acertos - i.acertos,
+    disparos: S.disparos - i.disparos,
+    eventosTeclado: S.teclas.length - i.teclas,
+    duracaoS: +((agora() - i.t) / 1000).toFixed(1),
+    melhorSequencia: S.melhorSequencia,
+  };
+  r.precisao = r.disparos ? Math.round(100 * r.acertos / r.disparos) : 0;
+  r.teclasPorSegundo = +(r.eventosTeclado / Math.max(r.duracaoS, 1)).toFixed(2);
+  S.niveis.push(r);
+  ev("nivel_fim", { nivel: S.nivel, resumo: r });
+  S.alvos = [];
+
+  if (S.nivel >= 3) { terminar(); return; }
+
+  S.pausado = true; S.entreRondas = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  caixaMsg("Nível " + r.nivel + " concluído",
+    r.pontos.toLocaleString("pt-PT") + " pontos  ·  " + r.acertos + " alvos  ·  " +
+    r.precisao + " % de precisão\n\nClique para começar o nível seguinte.");
+  const retomar = async () => {
+    cv.removeEventListener("click", retomar);
+    caixaMsg(null); S.pausado = false; S.entreRondas = false;
+    await pedeLock();
+    proximoNivel();
+  };
+  cv.addEventListener("click", retomar);
+}
+
+function verificaTempo(t) {
+  if (S.pausado || S.nivel === 1) return;           // o nível 1 acaba pelos alvos
+  const limite = S.nivel === 2 ? CFG.segundosNivel2 : CFG.segundosNivel3;
+  if ((t - S.tFaseInicio) / 1000 >= limite) fimDoNivel();
+}
+
+let msgTimer = null;
+function caixaMsg(titulo, texto, ms) {
+  clearTimeout(msgTimer);
+  if (!titulo) { $("#msg").style.display = "none"; return; }
+  $("#msg-t").textContent = titulo;
+  $("#msg-p").innerHTML = String(texto).split("\n").map(l =>
+    l.replace(/[&<>]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[c]))).join("<br>");
+  $("#msg").style.display = "flex";
+  if (ms) msgTimer = setTimeout(() => { $("#msg").style.display = "none"; }, ms);
+}
+
+function atualizaHud() {
+  $("#h-fase").textContent = S.nivel >= 1 && S.nivel <= 3 ? ("Nível " + S.nivel) : "—";
+  const el = $("#h-pontos");
+  el.textContent = S.pontos.toLocaleString("pt-PT");
+  el.classList.remove("pulsa"); void el.offsetWidth; el.classList.add("pulsa");
+  const q = $("#h-seq");
+  q.textContent = S.sequencia >= 2 ? ("×" + (1 + Math.min(S.sequencia, 10) * 0.1).toFixed(1)) : "—";
+  q.style.color = S.sequencia >= 5 ? "#5AD2AA" : "";
+  $("#h-acerto").textContent = S.disparos ? Math.round(100 * S.acertos / S.disparos) + "%" : "—";
+}
+setInterval(() => {
+  if (S.nivel >= 2 && S.nivel <= 3 && !S.pausado && S.correndo) {
+    const lim = S.nivel === 2 ? CFG.segundosNivel2 : CFG.segundosNivel3;
+    const r = Math.max(0, lim - (agora() - S.tFaseInicio) / 1000);
+    $("#h-tempo").textContent = Math.ceil(r) + "s";
+  } else if (S.nivel === 1 && S.calibSeq) {
+    $("#h-tempo").textContent = Math.max(0, S.calibSeq.length - S.calibIdx + 1) + " alvos";
+  }
+}, 200);
+
+/* -------------------------------------------------------------------- fim */
+let jaTerminou = false;
+function terminar() {
+  if (jaTerminou) return;        // o temporizador e o fim do bloco podiam chamar os dois
+  jaTerminou = true;
+  S.fase = "fim"; S.correndo = false; S.tFim = agora();
+  ev("sessao_fim", { pontos: S.pontos, melhorSequencia: S.melhorSequencia,
+                     niveis: S.niveis });
+  if (document.pointerLockElement) document.exitPointerLock();
+  caixaMsg(null);
+  mostra("t-fim");
+  desenhaResumo();
+  montaTabela();
+}
+
+function desenhaResumo() {
+  const dur = ((S.tFim - (S.eventos[0] ? S.eventos[0].t : 0)) / 1000 / 60).toFixed(1);
+  const prec = S.disparos ? Math.round(100 * S.acertos / S.disparos) : 0;
+  const amb = (typeof crossOriginIsolated !== "undefined" && crossOriginIsolated);
+  $("#pontuacao").innerHTML =
+    '<div class="big">' + S.pontos.toLocaleString("pt-PT") + '</div>' +
+    '<div class="biglab">pontos</div>' +
+    '<div class="mini">' + S.acertos + ' alvos · ' + prec + ' % de precisão · ' +
+    'melhor sequência ' + S.melhorSequencia + '</div>';
+  $("#resumo").innerHTML =
+    "<h4>Resumo da sua sessão</h4><ul>" +
+    "<li>Código anónimo: <code>" + S.id + "</code></li>" +
+    "<li>Duração: cerca de " + dur + " minutos</li>" +
+    S.niveis.map(r => "<li>Nível " + r.nivel + " (" + r.nome + "): " +
+      r.acertos + " alvos, " + r.precisao + " % de precisão, " +
+      r.eventosTeclado + " eventos de teclado</li>").join("") +
+    "<li>Amostras de movimento do rato: " + S.mouse.length.toLocaleString("pt-PT") + "</li>" +
+    "<li>Eventos de teclado: " + S.teclas.length + "</li>" +
+    "</ul><p class=\"nota\" style=\"margin:8px 0 0\">Qualidade técnica da captura: " +
+    "movimento sem aceleração do sistema " + (S.unadjusted === true ? "sim" : "não") +
+    " · relógio de alta resolução " + (amb ? "sim" : "não") + "</p>";
+}
+
+/* ---- Tabela de pontuações: vive só neste browser, nunca entra nos dados ---- */
+const LS = "aim-tabela-v1";
+function leTabela() {
+  try { return JSON.parse(localStorage.getItem(LS)) || []; } catch (e) { return []; }
+}
+function guardaTabela(t) {
+  try { localStorage.setItem(LS, JSON.stringify(t.slice(0, 20))); } catch (e) {}
+}
+function montaTabela() {
+  const tabela = leTabela();
+  const recorde = tabela.length ? Math.max(...tabela.map(x => x.pontos)) : 0;
+  if (S.pontos > recorde && tabela.length)
+    $("#pontuacao").insertAdjacentHTML("beforeend",
+      '<div class="recorde">Novo recorde neste computador</div>');
+  renderTabela();
+}
+function renderTabela() {
+  const tabela = leTabela().slice().sort((a, b) => b.pontos - a.pontos);
+  if (!tabela.length) { $("#tabela").innerHTML =
+    '<p class="nota" style="margin:0">Ainda não há pontuações guardadas neste computador.</p>'; return; }
+  $("#tabela").innerHTML = '<table class="tab"><tbody>' + tabela.slice(0, 10).map((x, i) =>
+    '<tr' + (x.id === S.id ? ' class="eu"' : '') + '><td>' + (i + 1) + '</td><td class="nm">' +
+    String(x.nome).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])) +
+    '</td><td class="pt">' + x.pontos.toLocaleString("pt-PT") + '</td></tr>').join("") +
+    '</tbody></table>';
+}
+$("#b-tabela").addEventListener("click", () => {
+  const nome = ($("#f-alcunha").value || "").trim().slice(0, 16) || "Anónimo";
+  const t = leTabela();
+  t.push({ nome, pontos: S.pontos, id: S.id, quando: Date.now() });
+  t.sort((a, b) => b.pontos - a.pontos);
+  guardaTabela(t);
+  S.alcunha = true;                       // só regista QUE houve alcunha, nunca qual
+  $("#b-tabela").textContent = "Adicionado";
+  $("#b-tabela").disabled = true;
+  renderTabela();
+});
+
+function montaFicheiro() {
+  return {
+    schema: CFG.versao,
+    participante: { id: S.id, consentimento: S.consentimento, formulario: S.form },
+    ambiente: {
+      userAgent: navigator.userAgent,
+      plataforma: navigator.platform || null,
+      idiomas: navigator.languages || null,
+      ecra: { larguraCss: window.innerWidth, alturaCss: window.innerHeight,
+              dpr: window.devicePixelRatio || 1,
+              larguraFisica: screen.width, alturaFisica: screen.height },
+      timeOrigin: performance.timeOrigin,
+      resolucaoTimer: estimaResolucaoTimer(),
+      crossOriginIsolated: (typeof crossOriginIsolated !== "undefined") ? crossOriginIsolated : null,
+      unadjustedMovement: S.unadjusted,
+      pointerRawUpdate: temRaw,
+      sensibilidade: S.sens,
+      fuso: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+    config: CFG,
+    desempenho: { pontos: S.pontos, acertos: S.acertos, disparos: S.disparos,
+                  melhorSequencia: S.melhorSequencia, niveis: S.niveis,
+                  usouAlcunha: !!S.alcunha },
+    mouse: S.mouse,     // [t_ms, dx, dy]
+    teclas: S.teclas,   // [t_ms, code, 1=baixo 0=cima]
+    vista: S.vista,     // [t_ms, yaw_rad, pitch_rad]
+    eventos: S.eventos,
+  };
+}
+
+/** Mede a granularidade real de performance.now() nesta máquina. */
+function estimaResolucaoTimer() {
+  let menor = Infinity, a = performance.now();
+  for (let i = 0; i < 20000; i++) {
+    const b = performance.now();
+    const d = b - a;
+    if (d > 0 && d < menor) menor = d;
+    a = b;
+  }
+  return menor === Infinity ? null : +menor.toFixed(6);
+}
+
+async function descarrega() {
+  const txt = JSON.stringify(montaFicheiro());
+  const base = "sessao_" + S.id;
+  let blob, nome;
+  if (typeof CompressionStream === "function") {
+    try {
+      const cs = new Blob([txt]).stream().pipeThrough(new CompressionStream("gzip"));
+      blob = await new Response(cs).blob();
+      nome = base + ".json.gz";
+    } catch (e) { blob = new Blob([txt], { type: "application/json" }); nome = base + ".json"; }
+  } else { blob = new Blob([txt], { type: "application/json" }); nome = base + ".json"; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nome; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  $("#b-desc").textContent = "Descarregado — obrigado";
+}
+$("#b-desc").addEventListener("click", descarrega);
+$("#b-copia").addEventListener("click", () => {
+  navigator.clipboard?.writeText(S.id);
+  $("#b-copia").textContent = "Copiado";
+});
+
+/* ------------------- gancho para envio automático, se um dia for preciso -----
+   Substituir descarrega() por isto e declarar o alojamento no protocolo de ética:
+
+   await fetch("https://o-seu-servidor/recolha", {
+     method: "POST", headers: { "Content-Type": "application/json" },
+     body: JSON.stringify(montaFicheiro())
+   });
+------------------------------------------------------------------------------ */
+</script>
+</body>
+</html>
