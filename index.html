@@ -71,13 +71,7 @@
   .placar .mini{font-size:13.5px;color:var(--ink2);margin-top:10px}
   .placar .recorde{display:inline-block;margin-top:12px;background:#17382E;color:#7FE3BC;
                    border-radius:99px;padding:4px 14px;font-size:12.5px;font-weight:600}
-  table.tab{width:100%;border-collapse:collapse;font-size:13.5px}
-  table.tab td{padding:5px 6px;border-bottom:1px solid var(--line);color:var(--ink2)}
-  table.tab tr:last-child td{border-bottom:0}
-  table.tab td:first-child{width:24px;color:var(--mut)}
-  table.tab .nm{color:var(--ink)}
-  table.tab .pt{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
-  table.tab tr.eu td{color:#7FE3BC}
+
 
   /* ---------------------------------------------------------- jogo */
   #jogo{display:none;position:absolute;inset:0;background:#0B0F14}
@@ -163,7 +157,7 @@
       dar explicação e sem consequência nenhuma. Como os dados são anónimos, depois de
       enviar o ficheiro já não é possível identificá-lo para o apagar — por isso a decisão
       de enviar é o momento em que o consentimento se torna definitivo.</p>
-    <p class="nota">Responsável: [A PREENCHER: nome] · [A PREENCHER: email]<br>
+    <p class="nota">Responsável: Diogo Lage · 50056610@europeia.pt<br>
       Orientação: [A PREENCHER: nome do orientador] · Universidade Europeia<br>
       Aprovação ética: [A PREENCHER: referência e data]</p>
 
@@ -263,9 +257,10 @@
         <li><b>Nível 2 — Mira e movimento (75 segundos).</b> Já pode andar com
           <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>. Os alvos aparecem longe e
           à sua volta.</li>
-        <li><b>Nível 3 — Mira, movimento e cobertura (75 segundos).</b> Há pilares pelo
-          meio. Alvos tapados ficam a cinzento e os tiros não contam: tem de se deslocar
-          para ganhar ângulo.</li>
+        <li><b>Nível 3 — Mira, movimento e cobertura (75 segundos).</b> Há pilares
+          fixos e blocos a atravessar a arena. Alvos tapados ficam a cinzento e os tiros
+          não contam: tem de se deslocar para ganhar ângulo — e sair da frente dos
+          blocos, que o empurram.</li>
       </ul>
       <p class="nota" style="margin:8px 0 0">Há pontuação a partir do nível 2. Alvos
         pequenos, alvos em movimento e acertos seguidos valem mais. Entre níveis há uma
@@ -330,28 +325,14 @@
     <p class="lead">Falta um passo: descarregar o ficheiro e enviá-lo. Até o fazer, os dados
       existem apenas neste computador.</p>
 
-    <div class="grelha">
-      <div class="card" id="resumo"></div>
-      <div class="card">
-        <h4>Tabela de pontuações</h4>
-        <p class="nota" style="margin:0 0 10px">Fica guardada <b>só neste computador</b>.
-          A alcunha nunca entra no ficheiro de dados nem chega ao investigador: serve
-          apenas para se encontrar nesta lista.</p>
-        <div class="campo" style="display:flex;gap:8px;align-items:flex-end">
-          <div style="flex:1"><label for="f-alcunha">Alcunha (opcional)</label>
-            <input type="text" id="f-alcunha" maxlength="16" placeholder="como quiser"></div>
-          <button class="sec" id="b-tabela" style="padding:9px 14px">Entrar na tabela</button>
-        </div>
-        <div id="tabela"></div>
-      </div>
-    </div>
+    <div class="card" id="resumo"></div>
 
     <div class="barra">
       <button id="b-desc">Descarregar o ficheiro</button>
       <button class="sec" id="b-copia">Copiar o meu código</button>
     </div>
     <p class="nota" id="envio" style="margin-top:14px">
-      Envie o ficheiro para <b>[A PREENCHER: email]</b>. Não precisa de escrever nada no
+      Envie o ficheiro para <b>50056610@europeia.pt</b>. Não precisa de escrever nada no
       corpo da mensagem — o ficheiro já traz o código anónimo da sessão.</p>
 
     <div class="card" style="margin-top:22px">
@@ -376,7 +357,9 @@ const CFG = {
   calibAlvos: 20,          // nº de alvos do nível 1 (sequência fixa, igual para todos)
   segundosNivel2: 75,      // mira + movimento, campo aberto
   segundosNivel3: 75,      // mira + movimento + obstáculos
-  nPilares: 9,
+  nPilares: 7,
+  nBlocos: 4,
+  limiteArena: 16,
   raioPilar: 0.9,
   alturaPilar: 3.6,
   raioJogador: 0.45,
@@ -408,9 +391,9 @@ const S = {
   nivel: 0, niveis: [],          // resumo de cada nível
   obstaculos: [],
   efeitos: [],                   // feedback visual transitório
-  alcunha: null,                 // só localStorage, nunca no ficheiro de dados
   tFaseInicio: 0, tFim: 0,
-  pausado: false, correndo: false, entreRondas: false, rondaInicio: null,
+  pausado: false, correndo: false, entreRondas: false, aFechar: false,
+  nivelInicio: null, blocos: [],
 };
 
 const TECLAS_PERMITIDAS = new Set(
@@ -651,6 +634,7 @@ function resolveColisao(px, pz) {
 
 /** O alvo está visível, ou há um pilar pelo meio? */
 function temLinhaDeVista(alvo) {
+  if (S.blocos.length && blocoTapa(alvo)) return false;
   if (!S.obstaculos.length) return true;
   const ox = S.cam.x, oz = S.cam.z, oy = S.cam.y;
   const dx = alvo.x - ox, dz = alvo.z - oz, dy = alvo.y - oy;
@@ -672,6 +656,116 @@ function temLinhaDeVista(alvo) {
     }
   }
   return true;
+}
+
+/* ------------------------------------------- blocos móveis (nível 3) --------
+ * Atravessam a arena em linha reta ao longo de X ou de Z. O jogador tem de se
+ * desviar, o que é o que gera toques curtos e mudanças de direção no teclado. */
+function geraBlocos() {
+  const b = [];
+  for (let i = 0; i < CFG.nBlocos; i++) {
+    const eixoX = i % 2 === 0;
+    const lado = (i % 4 < 2) ? 1 : -1;
+    const offset = -14 + (i * 7.3) % 28;
+    b.push({
+      eixoX,
+      x: eixoX ? -CFG.limiteArena * lado : offset,
+      z: eixoX ? offset : -CFG.limiteArena * lado,
+      lx: eixoX ? 1.6 : 3.2, lz: eixoX ? 3.2 : 1.6,
+      h: 2.4,
+      v: (1.7 + (i % 3) * 0.75) * lado,
+    });
+  }
+  return b;
+}
+
+function moveBlocos(dt) {
+  const L = CFG.limiteArena + 4;
+  for (const b of S.blocos) {
+    if (b.eixoX) { b.x += b.v * dt; if (Math.abs(b.x) > L) b.x = -Math.sign(b.v) * L; }
+    else         { b.z += b.v * dt; if (Math.abs(b.z) > L) b.z = -Math.sign(b.v) * L; }
+  }
+}
+
+/** Empurra o jogador para fora de um bloco, pelo lado mais próximo. */
+function resolveBlocos(px, pz) {
+  const r = CFG.raioJogador;
+  for (const b of S.blocos) {
+    const hx = b.lx / 2 + r, hz = b.lz / 2 + r;
+    const dx = px - b.x, dz = pz - b.z;
+    if (Math.abs(dx) < hx && Math.abs(dz) < hz) {
+      // sai pelo eixo onde a sobreposição é menor
+      const folgaX = hx - Math.abs(dx), folgaZ = hz - Math.abs(dz);
+      if (folgaX < folgaZ) px = b.x + Math.sign(dx || 1) * hx;
+      else                 pz = b.z + Math.sign(dz || 1) * hz;
+      if (!b.tocouEm || agora() - b.tocouEm > 900) {
+        b.tocouEm = agora();
+        ev("bloco_toque", { nivel: S.nivel, eixo: b.eixoX ? "x" : "z" });
+      }
+    }
+  }
+  return [px, pz];
+}
+
+/** Um bloco entre a câmara e o alvo também tapa a linha de vista. */
+function blocoTapa(alvo) {
+  const ox = S.cam.x, oz = S.cam.z, oy = S.cam.y;
+  const dx = alvo.x - ox, dz = alvo.z - oz, dy = alvo.y - oy;
+  const comp = Math.hypot(dx, dz);
+  if (comp < 1e-6) return false;
+  for (const b of S.blocos) {
+    // interseção raio-AABB no plano XZ (slab method)
+    let t0 = 0, t1 = comp;
+    const eixos = [[ox, dx / comp, b.x, b.lx / 2], [oz, dz / comp, b.z, b.lz / 2]];
+    let ok = true;
+    for (const [o, d, c, meio] of eixos) {
+      if (Math.abs(d) < 1e-9) { if (o < c - meio || o > c + meio) { ok = false; break; } continue; }
+      let ta = (c - meio - o) / d, tb = (c + meio - o) / d;
+      if (ta > tb) { const tmp = ta; ta = tb; tb = tmp; }
+      t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
+      if (t0 > t1) { ok = false; break; }
+    }
+    if (ok && t0 > 0.1 && t0 < comp) {
+      if (oy + dy * (t0 / comp) < b.h) return true;
+    }
+  }
+  return false;
+}
+
+function desenhaBloco(b, B) {
+  const hx = b.lx / 2, hz = b.lz / 2;
+  const cantos = [];
+  for (const [sx, sz] of [[-1,-1],[1,-1],[1,1],[-1,1]])
+    for (const y of [0, b.h])
+      cantos.push(projetaPonto({ x: b.x + sx * hx, y, z: b.z + sz * hz }, B));
+  if (cantos.some(c => !c)) return;
+  // silhueta: fecho convexo dos 8 cantos projetados
+  const pts = cantos.map(c => [c.sx, c.sy]).sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const cruz = (o, a, c) => (a[0]-o[0])*(c[1]-o[1]) - (a[1]-o[1])*(c[0]-o[0]);
+  const meio = [];
+  for (const p of pts) { while (meio.length >= 2 && cruz(meio[meio.length-2], meio[meio.length-1], p) <= 0) meio.pop(); meio.push(p); }
+  const cima = [];
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i];
+    while (cima.length >= 2 && cruz(cima[cima.length-2], cima[cima.length-1], p) <= 0) cima.pop(); cima.push(p); }
+  const hull = meio.slice(0, -1).concat(cima.slice(0, -1));
+  if (hull.length < 3) return;
+
+  const d = Math.hypot(b.x - S.cam.x, b.z - S.cam.z);
+  const prox = Math.max(0, Math.min(1, 1 - d / 34));
+  ctx.beginPath(); ctx.moveTo(hull[0][0], hull[0][1]);
+  for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i][0], hull[i][1]);
+  ctx.closePath();
+  const c = Math.round(44 + 26 * prox);
+  ctx.fillStyle = "rgb(" + (c + 14) + "," + (c - 6) + "," + (c - 14) + ")";   // tom quente
+  ctx.fill();
+  ctx.strokeStyle = "rgba(230,150,120,.55)"; ctx.lineWidth = 1.4 * DPR; ctx.stroke();
+
+  // face de cima, para ler como volume e não como mancha
+  const topo = [cantos[1], cantos[3], cantos[5], cantos[7]];
+  ctx.beginPath(); ctx.moveTo(topo[0].sx, topo[0].sy);
+  for (let i = 1; i < 4; i++) ctx.lineTo(topo[i].sx, topo[i].sy);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255,190,160,.16)"; ctx.fill();
 }
 
 function desenhaObstaculo(o, B) {
@@ -737,7 +831,8 @@ function criaAlvo(cfg) {
   ev("alvo_aparece", { id: a.id, nivel: S.nivel,
                        x: +a.x.toFixed(3), y: +a.y.toFixed(3), z: +a.z.toFixed(3),
                        raio: a.r, movel: !!(a.vx || a.vz),
-                       tapado: S.obstaculos.length ? !temLinhaDeVista(a) : false,
+                       tapado: (S.obstaculos.length || S.blocos.length)
+                         ? !temLinhaDeVista(a) : false,
                        posJogador: { x: +S.cam.x.toFixed(2), z: +S.cam.z.toFixed(2) },
                        erroAngularInicial: +erroAngular(a, baseCam()).toFixed(3) });
   return a;
@@ -776,30 +871,33 @@ function proximoCalib() {
 }
 
 function alvoAleatorio() {
-  // no nível 3 tenta colocar alvos sem linha de vista, para forçar deslocação
-  if (S.nivel === 3) {
-    for (let tent = 0; tent < 14; tent++) {
-      const a = novoAlvoEm(11 + Math.random() * 13);
-      if (!temLinhaDeVista(a)) return a;
-      S.alvos.pop();
-      ev("alvo_descartado", {});
-      S.proxId--;
-    }
+  // No nível 3 cerca de metade dos alvos nasce sem linha de vista, para obrigar
+  // a deslocar-se. A posição é testada ANTES de o alvo existir, para não sujar
+  // os eventos com alvos descartados.
+  const querTapado = S.nivel === 3 && Math.random() < 0.55;
+  const alcance = S.nivel === 2 ? [12, 25] : [10, 23];
+  for (let tent = 0; tent < 16; tent++) {
+    const c = posicaoCandidata(alcance);
+    const tapado = (S.obstaculos.length || S.blocos.length) && !temLinhaDeVista(c);
+    if (tent === 15 || tapado === querTapado) return criaAlvoEm(c);
   }
-  return novoAlvoEm(S.nivel === 2 ? (12 + Math.random() * 13) : (9 + Math.random() * 14));
 }
 
-function novoAlvoEm(dist) {
+function posicaoCandidata([dmin, dmax]) {
   const ang = Math.random() * Math.PI * 2;
-  const d = dist;
-  const movel = Math.random() < (S.nivel === 3 ? 0.25 : 0.4);
-  const a = criaAlvo({
-    x: S.cam.x + Math.sin(ang) * d,
+  const d = dmin + Math.random() * (dmax - dmin);
+  const lim = CFG.limiteArena - 1;
+  return {
+    x: Math.max(-lim, Math.min(lim, S.cam.x + Math.sin(ang) * d)),
     y: 1.1 + Math.random() * 1.9,
-    z: S.cam.z - Math.cos(ang) * d,
+    z: Math.max(-lim, Math.min(lim, S.cam.z - Math.cos(ang) * d)),
     r: 0.30 + Math.random() * 0.26,
-  });
-  if (movel) {
+  };
+}
+
+function criaAlvoEm(c) {
+  const a = criaAlvo(c);
+  if (Math.random() < (S.nivel === 3 ? 0.25 : 0.4)) {
     const v = 1.2 + Math.random() * 2.0, dir = Math.random() * Math.PI * 2;
     a.vx = Math.cos(dir) * v; a.vz = Math.sin(dir) * v;
   }
@@ -884,11 +982,17 @@ function frame(t) {
         const hx = Math.sin(S.cam.yaw), hz = -Math.cos(S.cam.yaw);
         let nx = S.cam.x + ((hx * fr + B.r.x * la) / n) * vel * dt;
         let nz = S.cam.z + ((hz * fr + B.r.z * la) / n) * vel * dt;
-        const lim = 26;                                  // arena limitada
+        const lim = CFG.limiteArena;                     // arena limitada
         nx = Math.max(-lim, Math.min(lim, nx));
         nz = Math.max(-lim, Math.min(lim, nz));
-        [S.cam.x, S.cam.z] = resolveColisao(nx, nz);
+        [nx, nz] = resolveColisao(nx, nz);
+        [S.cam.x, S.cam.z] = resolveBlocos(nx, nz);
       }
+    }
+
+    if (S.blocos.length) {
+      moveBlocos(dt);
+      [S.cam.x, S.cam.z] = resolveBlocos(S.cam.x, S.cam.z);   // apanha quem fica parado
     }
 
     // alvos móveis
@@ -930,6 +1034,9 @@ function desenha(B) {
     const prof = Math.hypot(o.x - S.cam.x, o.z - S.cam.z);
     cena.push({ prof, pilar: o });
   }
+  for (const b of S.blocos) {
+    cena.push({ prof: Math.hypot(b.x - S.cam.x, b.z - S.cam.z), bloco: b });
+  }
   const vis = [];
   for (const a of S.alvos) {
     const p = projeta(a, B);
@@ -938,6 +1045,7 @@ function desenha(B) {
   cena.sort((u, v) => v.prof - u.prof);
   for (const item of cena) {
     if (item.pilar) { desenhaObstaculo(item.pilar, B); continue; }
+    if (item.bloco) { desenhaBloco(item.bloco, B); continue; }
     const a = item.alvo, p = item.p;
     // sombra no chão, para dar profundidade
     const ch = projetaPonto({ x: a.x, y: 0, z: a.z }, B);
@@ -947,7 +1055,7 @@ function desenha(B) {
       ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fill();
     }
     ctx.beginPath(); ctx.arc(p.sx, p.sy, p.sr, 0, Math.PI * 2);
-    const tapado = S.obstaculos.length && !temLinhaDeVista(a);
+    const tapado = (S.obstaculos.length || S.blocos.length) && !temLinhaDeVista(a);
     ctx.fillStyle = tapado ? "#4A5968" : (a.vx || a.vz) ? "#D2503A" : "#2B86A4";
     ctx.fill();
     ctx.lineWidth = 2 * DPR; ctx.strokeStyle = "rgba(255,255,255,.65)"; ctx.stroke();
@@ -1053,7 +1161,7 @@ const NIVEIS = {
        movimento: false, obstaculos: false },
   2: { nome: "Mira e movimento", desc: "Agora pode andar com W A S D. Os alvos aparecem longe: aproxime-se.",
        movimento: true, obstaculos: false },
-  3: { nome: "Mira, movimento e cobertura", desc: "Há pilares pelo meio. Se um alvo estiver tapado, tem de se deslocar para ganhar ângulo.",
+  3: { nome: "Mira, movimento e cobertura", desc: "Pilares fixos e blocos em movimento. Alvos tapados ficam a cinzento: desloque-se para ganhar ângulo, e saia da frente dos blocos.",
        movimento: true, obstaculos: true },
 };
 
@@ -1079,16 +1187,18 @@ function proximoNivel() {
   if (!n) { terminar(); return; }
 
   S.fase = "n" + S.nivel;
+  S.aFechar = false;
   S.tFaseInicio = agora();
   S.alvos = []; S.sequencia = 0;
   S.cam = { x: 0, y: 1.65, z: 0, yaw: 0, pitch: 0 };
   S.obstaculos = n.obstaculos ? geraObstaculos() : [];
+  S.blocos = n.obstaculos ? geraBlocos() : [];
   S.nivelInicio = { pontos: S.pontos, acertos: S.acertos, disparos: S.disparos,
                     teclas: S.teclas.length, t: agora() };
 
   ev("nivel_inicio", { nivel: S.nivel, nome: n.nome,
                        movimento: n.movimento, obstaculos: n.obstaculos,
-                       nPilares: S.obstaculos.length,
+                       nPilares: S.obstaculos.length, nBlocos: S.blocos.length,
                        pilares: S.obstaculos.map(o => ({ x: +o.x.toFixed(2),
                          z: +o.z.toFixed(2), r: +o.r.toFixed(2), h: o.h })),
                        duracao: S.nivel === 1 ? null
@@ -1106,6 +1216,8 @@ function proximoNivel() {
 }
 
 function fimDoNivel() {
+  if (S.aFechar) return;             // o relógio e o último alvo podiam chamar os dois
+  S.aFechar = true;
   const i = S.nivelInicio;
   const r = {
     nivel: S.nivel, nome: NIVEIS[S.nivel].nome,
@@ -1131,9 +1243,12 @@ function fimDoNivel() {
     r.precisao + " % de precisão\n\nClique para começar o nível seguinte.");
   const retomar = async () => {
     cv.removeEventListener("click", retomar);
-    caixaMsg(null); S.pausado = false; S.entreRondas = false;
+    caixaMsg(null);
     await pedeLock();
+    // só agora se levanta a pausa: proximoNivel() acerta o relógio primeiro,
+    // senão o cronómetro do nível anterior ainda corre durante o await
     proximoNivel();
+    S.pausado = false; S.entreRondas = false;
   };
   cv.addEventListener("click", retomar);
 }
@@ -1187,7 +1302,6 @@ function terminar() {
   caixaMsg(null);
   mostra("t-fim");
   desenhaResumo();
-  montaTabela();
 }
 
 function desenhaResumo() {
@@ -1213,44 +1327,6 @@ function desenhaResumo() {
     " · relógio de alta resolução " + (amb ? "sim" : "não") + "</p>";
 }
 
-/* ---- Tabela de pontuações: vive só neste browser, nunca entra nos dados ---- */
-const LS = "aim-tabela-v1";
-function leTabela() {
-  try { return JSON.parse(localStorage.getItem(LS)) || []; } catch (e) { return []; }
-}
-function guardaTabela(t) {
-  try { localStorage.setItem(LS, JSON.stringify(t.slice(0, 20))); } catch (e) {}
-}
-function montaTabela() {
-  const tabela = leTabela();
-  const recorde = tabela.length ? Math.max(...tabela.map(x => x.pontos)) : 0;
-  if (S.pontos > recorde && tabela.length)
-    $("#pontuacao").insertAdjacentHTML("beforeend",
-      '<div class="recorde">Novo recorde neste computador</div>');
-  renderTabela();
-}
-function renderTabela() {
-  const tabela = leTabela().slice().sort((a, b) => b.pontos - a.pontos);
-  if (!tabela.length) { $("#tabela").innerHTML =
-    '<p class="nota" style="margin:0">Ainda não há pontuações guardadas neste computador.</p>'; return; }
-  $("#tabela").innerHTML = '<table class="tab"><tbody>' + tabela.slice(0, 10).map((x, i) =>
-    '<tr' + (x.id === S.id ? ' class="eu"' : '') + '><td>' + (i + 1) + '</td><td class="nm">' +
-    String(x.nome).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])) +
-    '</td><td class="pt">' + x.pontos.toLocaleString("pt-PT") + '</td></tr>').join("") +
-    '</tbody></table>';
-}
-$("#b-tabela").addEventListener("click", () => {
-  const nome = ($("#f-alcunha").value || "").trim().slice(0, 16) || "Anónimo";
-  const t = leTabela();
-  t.push({ nome, pontos: S.pontos, id: S.id, quando: Date.now() });
-  t.sort((a, b) => b.pontos - a.pontos);
-  guardaTabela(t);
-  S.alcunha = true;                       // só regista QUE houve alcunha, nunca qual
-  $("#b-tabela").textContent = "Adicionado";
-  $("#b-tabela").disabled = true;
-  renderTabela();
-});
-
 function montaFicheiro() {
   return {
     schema: CFG.versao,
@@ -1272,8 +1348,7 @@ function montaFicheiro() {
     },
     config: CFG,
     desempenho: { pontos: S.pontos, acertos: S.acertos, disparos: S.disparos,
-                  melhorSequencia: S.melhorSequencia, niveis: S.niveis,
-                  usouAlcunha: !!S.alcunha },
+                  melhorSequencia: S.melhorSequencia, niveis: S.niveis },
     mouse: S.mouse,     // [t_ms, dx, dy]
     teclas: S.teclas,   // [t_ms, code, 1=baixo 0=cima]
     vista: S.vista,     // [t_ms, yaw_rad, pitch_rad]

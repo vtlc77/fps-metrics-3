@@ -14,10 +14,11 @@ substitua:
 
 | Onde | O quê |
 |---|---|
-| Ecrã de consentimento | nome e email do responsável |
 | Ecrã de consentimento | nome do orientador |
 | Ecrã de consentimento | referência e data da aprovação ética |
-| Ecrã final | email para onde enviar o ficheiro |
+
+O responsável e o email de envio já estão preenchidos
+(Diogo Lage · `50056610@europeia.pt`).
 
 O aviso desaparece sozinho quando não restar nenhum `[A PREENCHER`.
 
@@ -92,10 +93,20 @@ O **nível 1** usa uma sequência fixa de 20 alvos, igual para todos os particip
 amplitudes angulares de 8°, 16° e 26°, oito direções, dois tamanhos de alvo. É o
 bloco que dá a lei de Fitts e o único diretamente comparável entre pessoas.
 
-O **nível 3** coloca nove pilares na arena e faz nascer os alvos preferencialmente
-*atrás* deles. Um alvo tapado aparece a cinzento e os tiros não contam — o
-participante tem de se deslocar para ganhar ângulo. É o que gera
-contra-strafes, mudanças de direção e toques curtos nas teclas.
+O **nível 3** tem dois tipos de obstáculo:
+
+- **Sete pilares fixos**, que tapam a linha de vista. Cerca de metade dos alvos
+  nasce de propósito atrás deles, e um alvo tapado aparece a cinzento com os
+  tiros a não contar. O participante tem de se deslocar para ganhar ângulo.
+- **Quatro blocos em movimento**, que atravessam a arena de lado a lado. Tapam
+  a linha de vista enquanto passam e **empurram o jogador** se o apanharem
+  parado, o que obriga a sair da frente.
+
+Os pilares criam deslocação deliberada; os blocos criam deslocação reativa. São
+duas coisas diferentes e juntas geram contra-strafes, mudanças de direção e
+toques curtos — exatamente o que faltava.
+
+Cada toque num bloco fica registado como evento `bloco_toque`.
 
 ### Porque é que o nível 3 existe
 
@@ -118,7 +129,7 @@ Para mudar as durações, no topo do `<script>`:
 
 ```js
 const CFG = { calibAlvos: 20, segundosNivel2: 75, segundosNivel3: 75,
-              nPilares: 9, raioPilar: 0.9, ... };
+              nPilares: 7, nBlocos: 4, limiteArena: 16, ... };
 ```
 
 ## Gamificação
@@ -132,17 +143,12 @@ encurtar a recolha. A pontuação começa no nível 2.
 - **Feedback** em cada acerto: anel a expandir no alvo, pontos a subir, mira a
   mudar de cor. Nada disto mexe na câmara — o traço da mira tem de ficar limpo
   para a análise.
-- **Tabela de pontuações** no ecrã final, com alcunha opcional.
+- **Resumo por nível** no ecrã final, com os eventos de teclado de cada um.
 
-### A alcunha nunca sai do browser
-
-A tabela vive em `localStorage`, só naquele computador. É útil quando testa
-várias pessoas no mesmo portátil: cada uma vê-se na lista e a seguinte quer
-bater a anterior.
-
-O ficheiro de dados guarda `desempenho.usouAlcunha: true/false` — **nunca a
-alcunha**. O teste automático verifica isso explicitamente: escreve um nome
-reconhecível, exporta o ficheiro e confirma que a string não aparece lá dentro.
+Não há tabela de pontuações. Sem servidor, a tabela só existia naquele browser
+e para aquela pessoa, o que a tornava inútil para toda a gente menos para quem
+testasse várias pessoas no mesmo portátil. Não compensava o peso que
+acrescentava ao texto de consentimento.
 
 ### O que isto custa em rigor
 
@@ -159,7 +165,7 @@ separar sessões recolhidas com e sem pontuação, se decidir testar o efeito.
 de servidor, voltaria a pôr-lhe responsabilidade de alojamento em cima, e
 sobretudo criaria incentivo para alguém usar assistência de mira para chegar ao
 topo — o que lhe contaminava a classe humana com amostras automatizadas mal
-rotuladas. A tabela local evita as três coisas.
+rotuladas. Se um dia a quiser, conte com esses três problemas.
 
 ## O ficheiro de dados
 

@@ -133,10 +133,10 @@ function ok(cond, msg) {
      "só regista teclas da lista branca: " + priv.codigosTeclas.join(", "));
   ok(priv.semTexto, "não existe nenhum campo de texto livre nos eventos");
 
-  console.log("\n7. Gamificação e privacidade da alcunha");
+  console.log("\n7. Gamificação");
   const g = await pg.evaluate(() => {
-    // pontua dois acertos seguidos e confirma o multiplicador
-    S.nivel = 2; S.fase = "n2"; S.pontos = 0; S.sequencia = 0; S.alvos = []; S.obstaculos = [];
+    S.nivel = 2; S.fase = "n2"; S.pontos = 0; S.sequencia = 0;
+    S.alvos = []; S.obstaculos = []; S.blocos = [];
     S.cam = { x:0, y:1.65, z:0, yaw:0, pitch:0 };
     const pontosPorAcerto = [];
     for (let i = 0; i < 4; i++) {
@@ -146,22 +146,12 @@ function ok(cond, msg) {
       pontosPorAcerto.push(S.pontos - antes);
     }
     const comSequencia = S.pontos, seqAlta = S.sequencia;
-    // uma falha corta a sequência
     S.alvos = []; S.cam.yaw = Math.PI; dispara(performance.now());
-    const seqDepoisDeFalhar = S.sequencia;
-    // alcunha vai para a tabela local mas nunca para o ficheiro
-    document.getElementById("f-alcunha").value = "SuperNome123";
-    document.getElementById("b-tabela").click();
     const d = montaFicheiro();
-    return {
-      pontosPorAcerto, comSequencia, seqAlta, seqDepoisDeFalhar,
-      temDesempenho: !!d.desempenho,
-      pontosNoFicheiro: d.desempenho.pontos,
-      usouAlcunha: d.desempenho.usouAlcunha,
-      alcunhaVazou: JSON.stringify(d).includes("SuperNome123"),
-      tabelaLocal: JSON.parse(localStorage.getItem("aim-tabela-v1") || "[]").length,
-      efeitosCriados: S.efeitos.length > 0,
-    };
+    return { pontosPorAcerto, comSequencia, seqAlta, seqDepoisDeFalhar: S.sequencia,
+             temDesempenho: !!d.desempenho, pontosNoFicheiro: d.desempenho.pontos,
+             semAlcunha: !JSON.stringify(d).includes("alcunha"),
+             efeitosCriados: S.efeitos.length > 0 };
   });
   console.log("   " + JSON.stringify(g));
   ok(g.comSequencia > 0, `pontuação acumula (${g.comSequencia} pontos)`);
@@ -170,10 +160,18 @@ function ok(cond, msg) {
   ok(g.seqAlta === 4, "conta a sequência de acertos");
   ok(g.seqDepoisDeFalhar === 0, "falhar corta a sequência");
   ok(g.temDesempenho && g.pontosNoFicheiro > 0, "o ficheiro regista a pontuação");
-  ok(g.usouAlcunha === true, "o ficheiro regista QUE houve alcunha");
-  ok(g.alcunhaVazou === false, "a alcunha NÃO aparece em lado nenhum do ficheiro");
-  ok(g.tabelaLocal > 0, "a tabela fica guardada em localStorage");
+  ok(g.semAlcunha, "não existe vestígio de alcunha no ficheiro");
   ok(g.efeitosCriados, "gera feedback visual nos acertos");
+
+  const semTabela = await pg.evaluate(() => ({
+    semElemento: !document.getElementById("tabela") && !document.getElementById("f-alcunha"),
+    semStorage: localStorage.getItem("aim-tabela-v1") === null,
+    temEmail: document.body.innerHTML.includes("50056610@europeia.pt"),
+    semPorPreencher: !document.body.innerHTML.includes("[A PREENCHER: email"),
+  }));
+  ok(semTabela.semElemento, "a tabela de pontuações foi removida da página");
+  ok(semTabela.semStorage, "não escreve nada em localStorage");
+  ok(semTabela.temEmail, "o email da universidade está na página");
 
   console.log("\n8. Ecrã final");
   ok(await pg.isVisible("#t-fim"), "mostra o ecrã de fim");
